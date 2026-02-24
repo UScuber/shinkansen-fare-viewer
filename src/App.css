@@ -356,6 +356,16 @@
   font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
 }
 
+.fare-section__note {
+  font-size: 0.78rem;
+  color: #78909c;
+  margin: 12px 0 0 0;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 600px) {
   .app-header {

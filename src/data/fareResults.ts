@@ -2,16 +2,12 @@
  * 料金表示用データの組み立て
  */
 
-import { getAllFares } from "./allFares";
 import {
-  addAdditional,
-  addSeasonalDiff,
   applyPassenger,
-  calculateSeasonalDiff,
-  calculateStudentFare,
-  isExcludedDate,
+  calculateAllFares,
   type PassengerType,
 } from "./calculator";
+import platKodamaConfig from "./plat_kodama_config.json";
 
 export type { PassengerType } from "./calculator";
 
@@ -20,11 +16,13 @@ export type FareItem = {
   value: number | null;
   group?: string;
   note?: string;
+  italic?: boolean;
 };
 
 export type FareResult = {
   section: string;
   items: FareItem[];
+  sectionNote?: string;
 };
 
 const TRAIN_TAGS = {
@@ -45,22 +43,18 @@ export function calculateFares(
   date: Date,
   passenger: PassengerType,
 ): FareResult[] {
-  const fareData = getAllFares(fromId, toId);
+  const fares = calculateAllFares(fromId, toId, date);
 
-  if (!fareData) {
+  if (!fares) {
     return [];
   }
 
   const results: FareResult[] = [];
-  const seasonalDiff = calculateSeasonalDiff(fromId, toId, date);
-  const excluded = isExcludedDate(date);
 
   const nozomiMizuho = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}`;
-  const nozomiMizuhoSakuraTsubame =
-    `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
+  const nozomiMizuhoSakuraTsubame = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
   const hikariKodama = `${TRAIN_TAGS.hikari}${TRAIN_TAGS.kodama}`;
-  const nonNozomiMizuho =
-    `${TRAIN_TAGS.kodama}${TRAIN_TAGS.hikari}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
+  const nonNozomiMizuho = `${TRAIN_TAGS.kodama}${TRAIN_TAGS.hikari}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
 
   // ================================================
   // グループ1: 乗車券
@@ -69,26 +63,21 @@ export function calculateFares(
 
   ticketItems.push({
     label: "距離",
-    value: fareData.distance,
+    value: fares.distance,
     note: "km",
   });
 
   ticketItems.push({
     label: "乗車券運賃",
-    value: applyPassenger(fareData.ticket_fare, passenger),
+    value: applyPassenger(fares.ticketFare, passenger),
   });
 
-  const studentFare = calculateStudentFare(
-    fareData.distance,
-    fareData.ticket_fare,
-  );
   ticketItems.push({
     label: "学割運賃",
-    value: applyPassenger(studentFare, passenger),
-    note:
-      Math.ceil(fareData.distance) >= 101
-        ? undefined
-        : "101km未満のため通常運賃と同額",
+    value: applyPassenger(fares.studentFare, passenger),
+    note: fares.studentFareApplicable
+      ? undefined
+      : "101km未満のため通常運賃と同額",
   });
 
   results.push({
@@ -101,45 +90,33 @@ export function calculateFares(
   // ================================================
   const expressItems: FareItem[] = [];
 
-  const hikariReservedWithSeason = addSeasonalDiff(
-    fareData.hikari_reserved,
-    seasonalDiff,
-  );
-  const greenWithSeason = addSeasonalDiff(fareData.green, seasonalDiff);
-
-  if (fareData.nozomi_additional !== null) {
+  if (fares.expressNozomiMizuhoReserved !== null) {
     expressItems.push({
       label: `${nozomiMizuho}普通車`,
-      value: applyPassenger(
-        addAdditional(hikariReservedWithSeason, fareData.nozomi_additional),
-        passenger,
-      ),
+      value: applyPassenger(fares.expressNozomiMizuhoReserved, passenger),
     });
   }
 
   expressItems.push({
     label: `${nonNozomiMizuho}普通車`,
-    value: applyPassenger(hikariReservedWithSeason, passenger),
+    value: applyPassenger(fares.expressOtherReserved, passenger),
   });
 
-  if (fareData.nozomi_additional !== null) {
+  if (fares.expressNozomiMizuhoGreen !== null) {
     expressItems.push({
       label: `${nozomiMizuho}グリーン車`,
-      value: applyPassenger(
-        addAdditional(greenWithSeason, fareData.nozomi_additional),
-        passenger,
-      ),
+      value: applyPassenger(fares.expressNozomiMizuhoGreen, passenger),
     });
   }
 
   expressItems.push({
     label: `${nonNozomiMizuho}グリーン車`,
-    value: applyPassenger(greenWithSeason, passenger),
+    value: applyPassenger(fares.expressOtherGreen, passenger),
   });
 
   expressItems.push({
     label: "自由席",
-    value: applyPassenger(fareData.free, passenger),
+    value: applyPassenger(fares.expressFree, passenger),
   });
 
   results.push({
@@ -151,48 +128,34 @@ export function calculateFares(
   // グループ3: スマートEXサービス
   // ================================================
   const smartexItems: FareItem[] = [];
-  const smartexReservedWithSeason = addSeasonalDiff(
-    fareData.smartex_reserved,
-    seasonalDiff,
-  );
-  const smartexGreenWithSeason = addSeasonalDiff(
-    fareData.smartex_green,
-    seasonalDiff,
-  );
 
-  if (fareData.nozomi_additional !== null) {
+  if (fares.smartexNozomiMizuhoReserved !== null) {
     smartexItems.push({
       label: `${nozomiMizuho}普通車`,
-      value: applyPassenger(
-        addAdditional(smartexReservedWithSeason, fareData.nozomi_additional),
-        passenger,
-      ),
+      value: applyPassenger(fares.smartexNozomiMizuhoReserved, passenger),
     });
   }
 
   smartexItems.push({
     label: `${nonNozomiMizuho}普通車`,
-    value: applyPassenger(smartexReservedWithSeason, passenger),
+    value: applyPassenger(fares.smartexOtherReserved, passenger),
   });
 
-  if (fareData.nozomi_additional !== null) {
+  if (fares.smartexNozomiMizuhoGreen !== null) {
     smartexItems.push({
       label: `${nozomiMizuho}グリーン車`,
-      value: applyPassenger(
-        addAdditional(smartexGreenWithSeason, fareData.nozomi_additional),
-        passenger,
-      ),
+      value: applyPassenger(fares.smartexNozomiMizuhoGreen, passenger),
     });
   }
 
   smartexItems.push({
     label: `${nonNozomiMizuho}グリーン車`,
-    value: applyPassenger(smartexGreenWithSeason, passenger),
+    value: applyPassenger(fares.smartexOtherGreen, passenger),
   });
 
   smartexItems.push({
     label: "自由席",
-    value: applyPassenger(fareData.smartex_free, passenger),
+    value: applyPassenger(fares.smartexFree, passenger),
   });
 
   results.push({
@@ -205,86 +168,61 @@ export function calculateFares(
   // ================================================
   const hayatokuItems: FareItem[] = [];
 
-  const isAfter2026Apr = date >= new Date(2026, 3, 1);
-  const hayatoku1Base = isAfter2026Apr
-    ? fareData.smartex_hayatoku1_2026_apr
-    : fareData.smartex_hayatoku1;
-
   hayatokuItems.push({
     group: "早特1",
     label: "自由席",
-    value: excluded ? null : applyPassenger(hayatoku1Base, passenger),
+    value: applyPassenger(fares.hayatoku1Free, passenger),
   });
 
   hayatokuItems.push({
     group: "早特3",
     label: `${nozomiMizuhoSakuraTsubame}グリーン車`,
-    value: excluded
-      ? null
-      : applyPassenger(
-          fareData.smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green,
-          passenger,
-        ),
+    value: applyPassenger(
+      fares.hayatoku3NozomiMizuhoSakuraTsubameGreen,
+      passenger,
+    ),
   });
 
   hayatokuItems.push({
     group: "早特3",
     label: `${TRAIN_TAGS.hikari}グリーン車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.smartex_hayatoku3_hikari_green, passenger),
+    value: applyPassenger(fares.hayatoku3HikariGreen, passenger),
   });
 
   hayatokuItems.push({
     group: "早特3",
     label: `${TRAIN_TAGS.kodama}グリーン車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.smartex_hayatoku3_kodama_green, passenger),
+    value: applyPassenger(fares.hayatoku3KodamaGreen, passenger),
   });
 
   hayatokuItems.push({
     group: "早特7",
     label: `${nozomiMizuhoSakuraTsubame}普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(
-          fareData.smartex_hayatoku7_nozomi_mizuho_sakura_tsubame_reserved,
-          passenger,
-        ),
+    value: applyPassenger(
+      fares.hayatoku7NozomiMizuhoSakuraTsubameReserved,
+      passenger,
+    ),
   });
 
   hayatokuItems.push({
     group: "早特7",
     label: `${hikariKodama}普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(
-          fareData.smartex_hayatoku7_hikari_kodama_reserved,
-          passenger,
-        ),
+    value: applyPassenger(fares.hayatoku7HikariKodamaReserved, passenger),
   });
 
   hayatokuItems.push({
     group: "早特21",
     label: `${nozomiMizuhoSakuraTsubame}普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(
-          fareData.smartex_hayatoku21_nozomi_mizuho_sakura_tsubame_reserved,
-          passenger,
-        ),
+    value: applyPassenger(
+      fares.hayatoku21NozomiMizuhoSakuraTsubameReserved,
+      passenger,
+    ),
   });
 
   hayatokuItems.push({
     group: "ファミリー早特7",
     label: `${hikariKodama}普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(
-          fareData.smartex_family_hayatoku7_hikari_kodama_reserved,
-          passenger,
-        ),
+    value: applyPassenger(fares.familyHayatoku7HikariKodamaReserved, passenger),
   });
 
   results.push({
@@ -296,66 +234,89 @@ export function calculateFares(
   // グループ5: ぷらっとこだま
   // ================================================
   const platKodamaItems: FareItem[] = [];
+  const priceClass = fares.platKodamaPriceClass;
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}A料金 普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_reserved_a, passenger),
-  });
+  // valid_untilを過ぎているかチェック
+  const validUntil = new Date(platKodamaConfig.valid_until);
+  const isExpired = date > validUntil;
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}B料金 普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_reserved_b, passenger),
-  });
+  // 料金区分が判定できる場合は該当プランのみ表示、できない場合は全プランを表示
+  if (priceClass === null || priceClass === "A") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}A料金 普通車`,
+      value: applyPassenger(fares.platKodamaReservedA, passenger),
+      italic: isExpired,
+    });
+  }
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}C料金 普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_reserved_c, passenger),
-  });
+  if (priceClass === null || priceClass === "B") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}B料金 普通車`,
+      value: applyPassenger(fares.platKodamaReservedB, passenger),
+      italic: isExpired,
+    });
+  }
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}D料金 普通車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_reserved_d, passenger),
-  });
+  if (priceClass === null || priceClass === "C") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}C料金 普通車`,
+      value: applyPassenger(fares.platKodamaReservedC, passenger),
+      italic: isExpired,
+    });
+  }
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}A料金 グリーン車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_green_a, passenger),
-  });
+  if (priceClass === null || priceClass === "D") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}D料金 普通車`,
+      value: applyPassenger(fares.platKodamaReservedD, passenger),
+      italic: isExpired,
+    });
+  }
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}B料金 グリーン車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_green_b, passenger),
-  });
+  if (priceClass === null || priceClass === "A") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}A料金 グリーン車`,
+      value: applyPassenger(fares.platKodamaGreenA, passenger),
+      italic: isExpired,
+    });
+  }
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}C料金 グリーン車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_green_c, passenger),
-  });
+  if (priceClass === null || priceClass === "B") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}B料金 グリーン車`,
+      value: applyPassenger(fares.platKodamaGreenB, passenger),
+      italic: isExpired,
+    });
+  }
 
-  platKodamaItems.push({
-    label: `${TRAIN_TAGS.kodama}D料金 グリーン車`,
-    value: excluded
-      ? null
-      : applyPassenger(fareData.plat_kodama_green_d, passenger),
+  if (priceClass === null || priceClass === "C") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}C料金 グリーン車`,
+      value: applyPassenger(fares.platKodamaGreenC, passenger),
+      italic: isExpired,
+    });
+  }
+
+  if (priceClass === null || priceClass === "D") {
+    platKodamaItems.push({
+      label: `${TRAIN_TAGS.kodama}D料金 グリーン車`,
+      value: applyPassenger(fares.platKodamaGreenD, passenger),
+      italic: isExpired,
+    });
+  }
+
+  // 料金の有効期限と変更に関する注意メッセージ
+  const validUntilStr = validUntil.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
+  const platKodamaNote = `※ ${validUntilStr}までの料金です。ぷらっとこだまの旅行代金は随時変更される可能性があります`;
 
   results.push({
     section: "ぷらっとこだま",
     items: platKodamaItems,
+    sectionNote: platKodamaNote,
   });
 
   return results;

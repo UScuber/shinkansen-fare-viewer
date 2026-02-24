@@ -6,10 +6,15 @@ type FareItemsTableProps = {
   showHeader?: boolean;
 };
 
-function formatFare(n: number | null, unit?: string): string {
+function formatFare(
+  n: number | null,
+  unit?: string,
+  withAsterisk?: boolean,
+): string {
   if (n === null) return "-";
   if (unit === "km") return `${n.toFixed(1)}km`;
-  return `${n.toLocaleString()}円`;
+  const formatted = `${n.toLocaleString()}円`;
+  return withAsterisk ? `*${formatted}` : formatted;
 }
 
 function FareItemsTable({ items, showHeader = true }: FareItemsTableProps) {
@@ -33,7 +38,11 @@ function FareItemsTable({ items, showHeader = true }: FareItemsTableProps) {
               )}
             </td>
             <td className="fare-table__value">
-              {formatFare(item.value, item.note === "km" ? "km" : undefined)}
+              {formatFare(
+                item.value,
+                item.note === "km" ? "km" : undefined,
+                item.italic,
+              )}
             </td>
           </tr>
         ))}

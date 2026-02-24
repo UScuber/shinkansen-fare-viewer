@@ -19,6 +19,9 @@ function FareTable({ results }: Props) {
           ) : (
             <FareItemsTable items={section.items} />
           )}
+          {section.sectionNote && (
+            <p className="fare-section__note">{section.sectionNote}</p>
+          )}
         </section>
       ))}
     </div>
