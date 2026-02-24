@@ -1,26 +1,28 @@
-import React from "react";
 import TrainLabel from "./TrainLabel";
 import type { FareItem } from "../data/fareResults";
 
 type FareItemsTableProps = {
   items: FareItem[];
+  showHeader?: boolean;
 };
 
 function formatFare(n: number | null, unit?: string): string {
   if (n === null) return "-";
-  if (unit === "km") return `${n} km`;
-  return `¥${n.toLocaleString()}`;
+  if (unit === "km") return `${n.toFixed(1)}km`;
+  return `${n.toLocaleString()}円`;
 }
 
-const FareItemsTable: React.FC<FareItemsTableProps> = ({ items }) => {
+function FareItemsTable({ items, showHeader = true }: FareItemsTableProps) {
   return (
     <table className="fare-table__table">
-      <thead>
-        <tr>
-          <th>項目</th>
-          <th>料金</th>
-        </tr>
-      </thead>
+      {showHeader && (
+        <thead>
+          <tr>
+            <th>項目</th>
+            <th>料金</th>
+          </tr>
+        </thead>
+      )}
       <tbody>
         {items.map((item, itemIdx) => (
           <tr key={itemIdx}>
@@ -38,6 +40,6 @@ const FareItemsTable: React.FC<FareItemsTableProps> = ({ items }) => {
       </tbody>
     </table>
   );
-};
+}
 
 export default FareItemsTable;

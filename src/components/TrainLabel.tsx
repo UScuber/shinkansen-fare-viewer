@@ -7,7 +7,7 @@ type TrainLabelProps = {
 
 const TAG_REGEX = /<([^<>]+)>/g;
 
-const TrainLabel: React.FC<TrainLabelProps> = ({ label }) => {
+function TrainLabel({ label }: TrainLabelProps) {
   const parts: React.ReactNode[] = [];
   TAG_REGEX.lastIndex = 0;
   let lastIndex = 0;
@@ -32,6 +32,6 @@ const TrainLabel: React.FC<TrainLabelProps> = ({ label }) => {
   }
 
   return <>{parts.length > 0 ? parts : label}</>;
-};
+}
 
 export default TrainLabel;

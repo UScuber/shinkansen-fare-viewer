@@ -1,5 +1,3 @@
-import React from "react";
-
 const TRAIN_TAG_MAP = {
   の: { name: "のぞみ", short: "の", color: "#BBBB00", textColor: "dark" },
   ひ: { name: "ひかり", short: "ひ", color: "#FF0000", textColor: "light" },
@@ -19,7 +17,7 @@ export function isTrainTag(tag: string): tag is TrainTag {
   return tag in TRAIN_TAG_MAP;
 }
 
-const TrainIcon: React.FC<TrainIconProps> = ({ tag }) => {
+function TrainIcon({ tag }: TrainIconProps) {
   if (!isTrainTag(tag)) {
     return <>{`<${tag}>`}</>;
   }
@@ -35,6 +33,6 @@ const TrainIcon: React.FC<TrainIconProps> = ({ tag }) => {
       {theme.short}
     </span>
   );
-};
+}
 
 export default TrainIcon;

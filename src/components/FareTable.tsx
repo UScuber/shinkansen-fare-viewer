@@ -1,4 +1,3 @@
-import React from "react";
 import HayatokuGroups from "./HayatokuGroups";
 import FareItemsTable from "./FareItemsTable";
 import type { FareResult } from "../data/fareResults";
@@ -7,7 +6,7 @@ type Props = {
   results: FareResult[];
 };
 
-const FareTable: React.FC<Props> = ({ results }) => {
+function FareTable({ results }: Props) {
   if (results.length === 0) return null;
 
   return (
@@ -24,6 +23,6 @@ const FareTable: React.FC<Props> = ({ results }) => {
       ))}
     </div>
   );
-};
+}
 
 export default FareTable;
