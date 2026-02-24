@@ -1,7 +1,7 @@
 import React from "react";
 import StationSelect from "./StationSelect";
 import SeasonBadge from "./SeasonBadge";
-import type { PassengerType } from "../data/calculator";
+import type { PassengerType } from "../data/fareResults";
 
 interface SearchFormProps {
   fromId: string;

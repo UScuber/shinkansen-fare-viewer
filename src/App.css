@@ -241,6 +241,44 @@
 }
 
 /* ===== Fare Table ===== */
+.train-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin: 0 4px 0 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.train-icon--dark {
+  color: #111;
+}
+
+.fare-subgroups {
+  display: grid;
+  gap: 16px;
+}
+
+.fare-subgroup {
+  padding: 12px 12px 6px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.fare-subgroup__title {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a237e;
+}
+
+/* ===== Fare Table ===== */
 .fare-table {
   display: flex;
   flex-direction: column;
