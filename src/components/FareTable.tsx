@@ -1,29 +1,24 @@
-import HayatokuGroups from "./HayatokuGroups";
-import FareItemsTable from "./FareItemsTable";
-import type { FareResult } from "../data/fareResults";
+import TicketSection from "./sections/TicketSection";
+import ExpressSection from "./sections/ExpressSection";
+import SmartExSection from "./sections/SmartExSection";
+import HayatokuSection from "./sections/HayatokuSection";
+import PlatKodamaSection from "./sections/PlatKodamaSection";
+import type { CalculatedFares, PassengerType } from "../data/calculator";
 
 type Props = {
-  results: FareResult[];
+  fares: CalculatedFares;
+  passenger: PassengerType;
+  date: Date;
 };
 
-function FareTable({ results }: Props) {
-  if (results.length === 0) return null;
-
+function FareTable({ fares, passenger, date }: Props) {
   return (
     <div className="fare-table">
-      {results.map((section, idx) => (
-        <section key={idx} className="fare-section">
-          <h3 className="fare-section__title">{section.section}</h3>
-          {section.section === "EX早特" ? (
-            <HayatokuGroups items={section.items} />
-          ) : (
-            <FareItemsTable items={section.items} />
-          )}
-          {section.sectionNote && (
-            <p className="fare-section__note">{section.sectionNote}</p>
-          )}
-        </section>
-      ))}
+      <TicketSection fares={fares} passenger={passenger} />
+      <ExpressSection fares={fares} passenger={passenger} />
+      <SmartExSection fares={fares} passenger={passenger} />
+      <HayatokuSection fares={fares} passenger={passenger} />
+      <PlatKodamaSection fares={fares} passenger={passenger} date={date} />
     </div>
   );
 }

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SearchForm from "./components/SearchForm";
 import FareTable from "./components/FareTable";
-import { calculateFares } from "./data/fareResults";
+import { calculateAllFares } from "./data/calculator";
+import type { CalculatedFares, PassengerType } from "./data/calculator";
 import { findStation } from "./data/stations";
-import type { FareResult, PassengerType } from "./data/fareResults";
 import "./App.css";
 
 function toDateInputValue(d: Date): string {
@@ -43,7 +43,7 @@ function App() {
   const [toId, setToId] = useState("");
   const [dateStr, setDateStr] = useState(toDateInputValue(new Date()));
   const [passenger, setPassenger] = useState<PassengerType>("adult");
-  const [results, setResults] = useState<FareResult[]>([]);
+  const [fares, setFares] = useState<CalculatedFares | null>(null);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
 
@@ -63,15 +63,10 @@ function App() {
     if (initialFrom && initialTo) {
       const [y, mo, d] = initialDate.split("-").map(Number);
       const date = new Date(y, mo - 1, d);
-      const fares = calculateFares(
-        initialFrom,
-        initialTo,
-        date,
-        initialPassenger,
-      );
-      setResults(fares);
+      const result = calculateAllFares(initialFrom, initialTo, date);
+      setFares(result);
       setSearched(true);
-      if (fares.length === 0) {
+      if (!result) {
         setError("この区間の料金データが見つかりませんでした。");
       }
     }
@@ -94,17 +89,22 @@ function App() {
     // dateStr は "YYYY-MM-DD" 形式 → ローカル時刻でDateを作る
     const [y, mo, d] = dateStr.split("-").map(Number);
     const date = new Date(y, mo - 1, d);
-    const fares = calculateFares(fromId, toId, date, passenger);
-    setResults(fares);
+    const result = calculateAllFares(fromId, toId, date);
+    setFares(result);
     setSearched(true);
     updateQueryParams(fromId, toId, dateStr, passenger);
-    if (fares.length === 0) {
+    if (!result) {
       setError("この区間の料金データが見つかりませんでした。");
     }
   };
 
   const fromStation = findStation(fromId);
   const toStation = findStation(toId);
+
+  const date = useMemo(() => {
+    const [y, mo, d] = dateStr.split("-").map(Number);
+    return new Date(y, mo - 1, d);
+  }, [dateStr]);
 
   return (
     <div className="app">
@@ -129,7 +129,7 @@ function App() {
           />
         </section>
 
-        {searched && results.length > 0 && (
+        {searched && fares && (
           <section className="result-section">
             <div className="result-header">
               <h2 className="result-title">
@@ -140,7 +140,7 @@ function App() {
                 <span>{passenger === "adult" ? "大人" : "子ども"} 1名</span>
               </div>
             </div>
-            <FareTable results={results} />
+            <FareTable fares={fares} passenger={passenger} date={date} />
           </section>
         )}
       </main>
