@@ -1,18 +1,13 @@
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
-import {
-  applyPassenger,
-  type CalculatedFares,
-  type PassengerType,
-} from "../../data/calculator";
+import type { CalculatedFares } from "../../data/calculator";
 import { TRAIN_TAGS } from "../../data/trainTags";
 
 type Props = {
   fares: CalculatedFares;
-  passenger: PassengerType;
 };
 
-function HayatokuSection({ fares, passenger }: Props) {
+function HayatokuSection({ fares }: Props) {
   const nozomiMizuhoSakuraTsubame = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
   const hikariKodama = `${TRAIN_TAGS.hikari}${TRAIN_TAGS.kodama}`;
 
@@ -34,7 +29,7 @@ function HayatokuSection({ fares, passenger }: Props) {
             <tbody>
               <FareRow
                 label="自由席"
-                value={applyPassenger(fares.hayatoku1Free, passenger)}
+                value={fares.hayatoku1Free}
               />
             </tbody>
           </table>
@@ -46,24 +41,15 @@ function HayatokuSection({ fares, passenger }: Props) {
             <tbody>
               <FareRow
                 label={`${nozomiMizuhoSakuraTsubame}グリーン車`}
-                value={applyPassenger(
-                  fares.hayatoku3NozomiMizuhoSakuraTsubameGreen,
-                  passenger,
-                )}
+                value={fares.hayatoku3NozomiMizuhoSakuraTsubameGreen}
               />
               <FareRow
                 label={`${TRAIN_TAGS.hikari}グリーン車`}
-                value={applyPassenger(
-                  fares.hayatoku3HikariGreen,
-                  passenger,
-                )}
+                value={fares.hayatoku3HikariGreen}
               />
               <FareRow
                 label={`${TRAIN_TAGS.kodama}グリーン車`}
-                value={applyPassenger(
-                  fares.hayatoku3KodamaGreen,
-                  passenger,
-                )}
+                value={fares.hayatoku3KodamaGreen}
               />
             </tbody>
           </table>
@@ -75,17 +61,11 @@ function HayatokuSection({ fares, passenger }: Props) {
             <tbody>
               <FareRow
                 label={`${nozomiMizuhoSakuraTsubame}普通車`}
-                value={applyPassenger(
-                  fares.hayatoku7NozomiMizuhoSakuraTsubameReserved,
-                  passenger,
-                )}
+                value={fares.hayatoku7NozomiMizuhoSakuraTsubameReserved}
               />
               <FareRow
                 label={`${hikariKodama}普通車`}
-                value={applyPassenger(
-                  fares.hayatoku7HikariKodamaReserved,
-                  passenger,
-                )}
+                value={fares.hayatoku7HikariKodamaReserved}
               />
             </tbody>
           </table>
@@ -97,10 +77,7 @@ function HayatokuSection({ fares, passenger }: Props) {
             <tbody>
               <FareRow
                 label={`${nozomiMizuhoSakuraTsubame}普通車`}
-                value={applyPassenger(
-                  fares.hayatoku21NozomiMizuhoSakuraTsubameReserved,
-                  passenger,
-                )}
+                value={fares.hayatoku21NozomiMizuhoSakuraTsubameReserved}
               />
             </tbody>
           </table>
@@ -112,10 +89,7 @@ function HayatokuSection({ fares, passenger }: Props) {
             <tbody>
               <FareRow
                 label={`${hikariKodama}普通車`}
-                value={applyPassenger(
-                  fares.familyHayatoku7HikariKodamaReserved,
-                  passenger,
-                )}
+                value={fares.familyHayatoku7HikariKodamaReserved}
               />
             </tbody>
           </table>

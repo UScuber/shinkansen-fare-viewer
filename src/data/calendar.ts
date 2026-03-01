@@ -19,17 +19,29 @@ export const SEASON_DIFF: Record<Season, number> = {
   off: -200,
 };
 
+/**
+ * ローカル日付を "YYYY-MM-DD" 形式の文字列に変換する。
+ * toISOString() はUTCに変換するため、JST等では日付がずれる問題を回避する。
+ */
+function toLocalDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 // 日付範囲 [start, end] を含む全日付を列挙
 function rangeToSeasons(
   ranges: { start: string; end: string; season: Season }[],
 ): Map<string, Season> {
   const map = new Map<string, Season>();
   for (const r of ranges) {
-    const start = new Date(r.start);
-    const end = new Date(r.end);
+    // "T00:00:00" を付与してローカル時間として解釈させる
+    // （日付のみの文字列はUTCとして解釈されるため）
+    const start = new Date(r.start + "T00:00:00");
+    const end = new Date(r.end + "T00:00:00");
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().slice(0, 10);
-      map.set(key, r.season);
+      map.set(toLocalDateKey(d), r.season);
     }
   }
   return map;
@@ -53,6 +65,6 @@ function getSeasonMap(): Map<string, Season> {
  * 指定日の繁忙期区分を返す
  */
 export function getSeason(date: Date): Season {
-  const key = date.toISOString().slice(0, 10);
+  const key = toLocalDateKey(date);
   return getSeasonMap().get(key) ?? "normal";
 }

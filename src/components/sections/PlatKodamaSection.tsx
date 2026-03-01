@@ -1,20 +1,15 @@
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
-import {
-  applyPassenger,
-  type CalculatedFares,
-  type PassengerType,
-} from "../../data/calculator";
+import type { CalculatedFares } from "../../data/calculator";
 import { TRAIN_TAGS } from "../../data/trainTags";
 import platKodamaConfig from "../../data/plat_kodama_config.json";
 
 type Props = {
   fares: CalculatedFares;
-  passenger: PassengerType;
   date: Date;
 };
 
-function PlatKodamaSection({ fares, passenger, date }: Props) {
+function PlatKodamaSection({ fares, date }: Props) {
   const priceClass = fares.platKodamaPriceClass;
   const validUntil = new Date(platKodamaConfig.valid_until);
   const isExpired = date > validUntil;
@@ -39,56 +34,56 @@ function PlatKodamaSection({ fares, passenger, date }: Props) {
           {(priceClass === null || priceClass === "A") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}A料金 普通車`}
-              value={applyPassenger(fares.platKodamaReservedA, passenger)}
+              value={fares.platKodamaReservedA}
               italic={isExpired}
             />
           )}
           {(priceClass === null || priceClass === "B") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}B料金 普通車`}
-              value={applyPassenger(fares.platKodamaReservedB, passenger)}
+              value={fares.platKodamaReservedB}
               italic={isExpired}
             />
           )}
           {(priceClass === null || priceClass === "C") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}C料金 普通車`}
-              value={applyPassenger(fares.platKodamaReservedC, passenger)}
+              value={fares.platKodamaReservedC}
               italic={isExpired}
             />
           )}
           {(priceClass === null || priceClass === "D") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}D料金 普通車`}
-              value={applyPassenger(fares.platKodamaReservedD, passenger)}
+              value={fares.platKodamaReservedD}
               italic={isExpired}
             />
           )}
           {(priceClass === null || priceClass === "A") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}A料金 グリーン車`}
-              value={applyPassenger(fares.platKodamaGreenA, passenger)}
+              value={fares.platKodamaGreenA}
               italic={isExpired}
             />
           )}
           {(priceClass === null || priceClass === "B") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}B料金 グリーン車`}
-              value={applyPassenger(fares.platKodamaGreenB, passenger)}
+              value={fares.platKodamaGreenB}
               italic={isExpired}
             />
           )}
           {(priceClass === null || priceClass === "C") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}C料金 グリーン車`}
-              value={applyPassenger(fares.platKodamaGreenC, passenger)}
+              value={fares.platKodamaGreenC}
               italic={isExpired}
             />
           )}
           {(priceClass === null || priceClass === "D") && (
             <FareRow
               label={`${TRAIN_TAGS.kodama}D料金 グリーン車`}
-              value={applyPassenger(fares.platKodamaGreenD, passenger)}
+              value={fares.platKodamaGreenD}
               italic={isExpired}
             />
           )}

@@ -1,32 +1,31 @@
 import React from "react";
 import StationSelect from "./StationSelect";
 import SeasonBadge from "./SeasonBadge";
-import type { PassengerType } from "../data/fareResults";
 
 interface SearchFormProps {
   fromId: string;
   toId: string;
   dateStr: string;
-  passenger: PassengerType;
   onFromChange: (id: string) => void;
   onToChange: (id: string) => void;
   onDateChange: (date: string) => void;
-  onPassengerChange: (p: PassengerType) => void;
   onSearch: () => void;
   error?: string;
+  hasViaStations?: boolean;
+  children?: React.ReactNode;
 }
 
 const SearchForm: React.FC<SearchFormProps> = ({
   fromId,
   toId,
   dateStr,
-  passenger,
   onFromChange,
   onToChange,
   onDateChange,
-  onPassengerChange,
   onSearch,
   error,
+  hasViaStations,
+  children,
 }) => {
   const handleSwap = () => {
     const tmp = fromId;
@@ -76,35 +75,14 @@ const SearchForm: React.FC<SearchFormProps> = ({
           </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label">乗客</label>
-          <div className="radio-group">
-            <label className="radio-label">
-              <input
-                type="radio"
-                value="adult"
-                checked={passenger === "adult"}
-                onChange={() => onPassengerChange("adult")}
-              />
-              大人
-            </label>
-            <label className="radio-label">
-              <input
-                type="radio"
-                value="child"
-                checked={passenger === "child"}
-                onChange={() => onPassengerChange("child")}
-              />
-              子ども（小学生）
-            </label>
-          </div>
-        </div>
       </div>
+
+      {children}
 
       {error && <p className="search-error">{error}</p>}
 
       <button className="search-btn" onClick={onSearch}>
-        料金を検索
+        {hasViaStations ? "経由料金を検索" : "料金を検索"}
       </button>
     </div>
   );

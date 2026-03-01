@@ -99,3 +99,125 @@ export const STATION_IDS = STATIONS.map((s) => s.id);
 export function findStation(id: string): Station | undefined {
   return STATIONS.find((s) => s.id === id);
 }
+
+/**
+ * STATIONS配列内の駅インデックスを返す（見つからない場合-1）
+ */
+export function getStationIndex(id: string): number {
+  return STATIONS.findIndex((s) => s.id === id);
+}
+
+const HAKATA_INDEX = getStationIndex("hakata");
+const SHINOSAKA_INDEX = getStationIndex("shinosaka");
+
+/**
+ * 指定した駅IDリストが路線順序通りかどうか検証する
+ * 昇順（東京→鹿児島方向）または降順のいずれかであればtrue
+ */
+export function areStationsInOrder(stationIds: string[]): boolean {
+  if (stationIds.length <= 1) return true;
+  const indices = stationIds.map(getStationIndex);
+  if (indices.some((i) => i === -1)) return false;
+  const ascending = indices.every(
+    (val, i) => i === 0 || val > indices[i - 1],
+  );
+  const descending = indices.every(
+    (val, i) => i === 0 || val < indices[i - 1],
+  );
+  return ascending || descending;
+}
+
+/**
+ * 博多が2駅間に位置するかどうか判定（両端含まない）
+ */
+export function isHakataBetween(fromId: string, toId: string): boolean {
+  const fromIdx = getStationIndex(fromId);
+  const toIdx = getStationIndex(toId);
+  if (fromIdx === -1 || toIdx === -1) return false;
+  const lo = Math.min(fromIdx, toIdx);
+  const hi = Math.max(fromIdx, toIdx);
+  return HAKATA_INDEX > lo && HAKATA_INDEX < hi;
+}
+
+/**
+ * 2駅間の駅リストを返す（経由駅候補用）
+ * 両端を含まず、常に地理的順序で返す
+ */
+export function getStationsBetween(
+  fromId: string,
+  toId: string,
+): Station[] {
+  const fromIdx = getStationIndex(fromId);
+  const toIdx = getStationIndex(toId);
+  if (fromIdx === -1 || toIdx === -1) return [];
+  const lo = Math.min(fromIdx, toIdx);
+  const hi = Math.max(fromIdx, toIdx);
+  return STATIONS.slice(lo + 1, hi);
+}
+
+import type { TrainType } from "./types";
+
+/**
+ * 区間で利用可能な列車リストを返す
+ *
+ * 仕様:
+ * - 東海道内（〜新大阪）: のぞみ、ひかり、こだま
+ * - 山陽内（新大阪〜博多）: のぞみ、ひかり、こだま、みずほ、さくら
+ * - 九州内（博多〜鹿児島中央）: みずほ、さくら、つばめ
+ * - 東海道＋山陽またぎ（新大阪より東京側 ↔ 新大阪より博多側）: のぞみ、ひかり、こだま
+ * - 山陽＋九州またぎ: みずほ、さくら
+ */
+export function getAvailableTrains(
+  fromId: string,
+  toId: string,
+): TrainType[] {
+  const fromIdx = getStationIndex(fromId);
+  const toIdx = getStationIndex(toId);
+  if (fromIdx === -1 || toIdx === -1) return [];
+
+  const lo = Math.min(fromIdx, toIdx);
+  const hi = Math.max(fromIdx, toIdx);
+
+  // 区間がどの範囲にまたがるか判定
+  // 新大阪は東海道と山陽の両方に属する。位置的に:
+  //   東海道のみ: hi <= SHINOSAKA_INDEX
+  //   山陽のみ: lo >= SHINOSAKA_INDEX && hi <= HAKATA_INDEX
+  //   九州のみ: lo >= HAKATA_INDEX
+  //   東海道+山陽またぎ: lo < SHINOSAKA_INDEX && hi > SHINOSAKA_INDEX && hi <= HAKATA_INDEX
+  //   山陽+九州またぎ: lo >= SHINOSAKA_INDEX && lo < HAKATA_INDEX && hi > HAKATA_INDEX
+  //   (lo < SHINOSAKA_INDEX && hi > HAKATA_INDEX は東海道+九州の直接またぎ。通常は単一区間にならない)
+
+  const inTokaidoOnly = hi <= SHINOSAKA_INDEX;
+  const inSanyoOnly = lo >= SHINOSAKA_INDEX && hi <= HAKATA_INDEX;
+  const inKyushuOnly = lo >= HAKATA_INDEX;
+  const crossTokaidoSanyo =
+    lo < SHINOSAKA_INDEX && hi > SHINOSAKA_INDEX && hi <= HAKATA_INDEX;
+  const crossSanyoKyushu =
+    lo >= SHINOSAKA_INDEX && lo < HAKATA_INDEX && hi > HAKATA_INDEX;
+
+  if (inTokaidoOnly) {
+    return ["nozomi", "hikari", "kodama"];
+  }
+  if (inSanyoOnly) {
+    return ["nozomi", "hikari", "kodama", "mizuho", "sakura"];
+  }
+  if (inKyushuOnly) {
+    return ["mizuho", "sakura", "tsubame"];
+  }
+  if (crossTokaidoSanyo) {
+    return ["nozomi", "hikari", "kodama"];
+  }
+  if (crossSanyoKyushu) {
+    return ["mizuho", "sakura"];
+  }
+
+  // 東海道+九州をまたぐ場合（通常は単一区間にならないが安全のため）
+  return [];
+}
+
+/**
+ * 列車がのぞみ/みずほグループかどうか判定
+ */
+export function isNozomiMizuho(trainType: TrainType | null): boolean {
+  return trainType === "nozomi" || trainType === "mizuho";
+}

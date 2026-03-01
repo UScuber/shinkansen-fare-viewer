@@ -1,17 +1,12 @@
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
-import {
-  applyPassenger,
-  type CalculatedFares,
-  type PassengerType,
-} from "../../data/calculator";
+import type { CalculatedFares } from "../../data/calculator";
 
 type Props = {
   fares: CalculatedFares;
-  passenger: PassengerType;
 };
 
-function TicketSection({ fares, passenger }: Props) {
+function TicketSection({ fares }: Props) {
   return (
     <FareSection title="乗車券">
       <table className="fare-table__table">
@@ -25,11 +20,11 @@ function TicketSection({ fares, passenger }: Props) {
           <FareRow label="距離" value={fares.distance} note="km" />
           <FareRow
             label="乗車券運賃"
-            value={applyPassenger(fares.ticketFare, passenger)}
+            value={fares.ticketFare}
           />
           <FareRow
             label="学割運賃"
-            value={applyPassenger(fares.studentFare, passenger)}
+            value={fares.studentFare}
             note={
               fares.studentFareApplicable
                 ? undefined

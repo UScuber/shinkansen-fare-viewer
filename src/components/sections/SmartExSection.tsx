@@ -1,18 +1,13 @@
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
-import {
-  applyPassenger,
-  type CalculatedFares,
-  type PassengerType,
-} from "../../data/calculator";
+import type { CalculatedFares } from "../../data/calculator";
 import { TRAIN_TAGS } from "../../data/trainTags";
 
 type Props = {
   fares: CalculatedFares;
-  passenger: PassengerType;
 };
 
-function SmartExSection({ fares, passenger }: Props) {
+function SmartExSection({ fares }: Props) {
   const nozomiMizuho = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}`;
   const nonNozomiMizuho = `${TRAIN_TAGS.kodama}${TRAIN_TAGS.hikari}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
 
@@ -29,32 +24,26 @@ function SmartExSection({ fares, passenger }: Props) {
           {fares.smartexNozomiMizuhoReserved !== null && (
             <FareRow
               label={`${nozomiMizuho}普通車`}
-              value={applyPassenger(
-                fares.smartexNozomiMizuhoReserved,
-                passenger,
-              )}
+              value={fares.smartexNozomiMizuhoReserved}
             />
           )}
           <FareRow
             label={`${nonNozomiMizuho}普通車`}
-            value={applyPassenger(fares.smartexOtherReserved, passenger)}
+            value={fares.smartexOtherReserved}
           />
           {fares.smartexNozomiMizuhoGreen !== null && (
             <FareRow
               label={`${nozomiMizuho}グリーン車`}
-              value={applyPassenger(
-                fares.smartexNozomiMizuhoGreen,
-                passenger,
-              )}
+              value={fares.smartexNozomiMizuhoGreen}
             />
           )}
           <FareRow
             label={`${nonNozomiMizuho}グリーン車`}
-            value={applyPassenger(fares.smartexOtherGreen, passenger)}
+            value={fares.smartexOtherGreen}
           />
           <FareRow
             label="自由席"
-            value={applyPassenger(fares.smartexFree, passenger)}
+            value={fares.smartexFree}
           />
         </tbody>
       </table>

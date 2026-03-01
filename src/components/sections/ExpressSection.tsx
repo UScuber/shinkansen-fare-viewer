@@ -1,18 +1,13 @@
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
-import {
-  applyPassenger,
-  type CalculatedFares,
-  type PassengerType,
-} from "../../data/calculator";
+import type { CalculatedFares } from "../../data/calculator";
 import { TRAIN_TAGS } from "../../data/trainTags";
 
 type Props = {
   fares: CalculatedFares;
-  passenger: PassengerType;
 };
 
-function ExpressSection({ fares, passenger }: Props) {
+function ExpressSection({ fares }: Props) {
   const nozomiMizuho = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}`;
   const nonNozomiMizuho = `${TRAIN_TAGS.kodama}${TRAIN_TAGS.hikari}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
 
@@ -29,32 +24,26 @@ function ExpressSection({ fares, passenger }: Props) {
           {fares.expressNozomiMizuhoReserved !== null && (
             <FareRow
               label={`${nozomiMizuho}普通車`}
-              value={applyPassenger(
-                fares.expressNozomiMizuhoReserved,
-                passenger,
-              )}
+              value={fares.expressNozomiMizuhoReserved}
             />
           )}
           <FareRow
             label={`${nonNozomiMizuho}普通車`}
-            value={applyPassenger(fares.expressOtherReserved, passenger)}
+            value={fares.expressOtherReserved}
           />
           {fares.expressNozomiMizuhoGreen !== null && (
             <FareRow
               label={`${nozomiMizuho}グリーン車`}
-              value={applyPassenger(
-                fares.expressNozomiMizuhoGreen,
-                passenger,
-              )}
+              value={fares.expressNozomiMizuhoGreen}
             />
           )}
           <FareRow
             label={`${nonNozomiMizuho}グリーン車`}
-            value={applyPassenger(fares.expressOtherGreen, passenger)}
+            value={fares.expressOtherGreen}
           />
           <FareRow
             label="自由席"
-            value={applyPassenger(fares.expressFree, passenger)}
+            value={fares.expressFree}
           />
         </tbody>
       </table>
