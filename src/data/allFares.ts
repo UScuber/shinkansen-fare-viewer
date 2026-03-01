@@ -10,6 +10,7 @@ export type AllFaresEntry = {
   end: string;
   hikari_reserved: number | null;
   green: number | null;
+  green_charge: number | null;
   free: number | null;
   nozomi_additional: number | null;
   distance: number;
