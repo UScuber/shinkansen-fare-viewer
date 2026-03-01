@@ -98,7 +98,7 @@ const DetailedSettings: React.FC<Props> = ({
   onViaStationsChange,
   onSegmentConfigsChange,
 }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(viaStations.length > 0);
 
   // 出発駅・到着駅が未設定なら何も表示しない
   if (!fromId || !toId || fromId === toId) {

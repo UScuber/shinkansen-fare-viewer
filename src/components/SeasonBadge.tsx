@@ -18,7 +18,7 @@ const SeasonBadge: React.FC<Props> = ({ date }) => {
   return (
     <span
       className="season-badge"
-      style={{ backgroundColor: info.color }}
+      style={{ backgroundColor: info.color, color: "white" }}
       title={`指定席に${SEASON_DIFF[season] >= 0 ? "+" : ""}${SEASON_DIFF[season]}円`}
     >
       {info.label}

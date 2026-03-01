@@ -7,8 +7,43 @@ import { calculateAllFares } from "./data/calculator";
 import type { CalculatedFares } from "./data/calculator";
 import { calculateViaFare, validateGreenContiguity } from "./data/viaCalculator";
 import { findStation } from "./data/stations";
-import type { SegmentConfig, JourneySegment, ViaFareResult as ViaFareResultType } from "./data/types";
+import type {
+  SeatType,
+  TrainType,
+  SegmentConfig,
+  JourneySegment,
+  ViaFareResult as ViaFareResultType,
+} from "./data/types";
 import "./App.css";
+
+/* ===== Query parameter encoding ===== */
+
+const SEAT_TO_CODE: Record<string, string> = {
+  reserved: "r",
+  green: "g",
+  free: "f",
+};
+const CODE_TO_SEAT: Record<string, SeatType> = {
+  r: "reserved",
+  g: "green",
+  f: "free",
+};
+const TRAIN_TO_CODE: Record<string, string> = {
+  nozomi: "no",
+  hikari: "hi",
+  kodama: "ko",
+  mizuho: "mi",
+  sakura: "sa",
+  tsubame: "ts",
+};
+const CODE_TO_TRAIN: Record<string, TrainType> = {
+  no: "nozomi",
+  hi: "hikari",
+  ko: "kodama",
+  mi: "mizuho",
+  sa: "sakura",
+  ts: "tsubame",
+};
 
 function toDateInputValue(d: Date): string {
   const y = d.getFullYear();
@@ -28,11 +63,26 @@ function updateQueryParams(
   fromId: string,
   toId: string,
   dateStr: string,
+  viaStations: string[],
+  segmentConfigs: SegmentConfig[],
 ): void {
   const params = new URLSearchParams();
   if (fromId) params.set("from", fromId);
   if (toId) params.set("to", toId);
   if (dateStr) params.set("date", dateStr);
+  if (viaStations.length > 0) {
+    params.set("via", viaStations.join(","));
+    const seatCodes = segmentConfigs
+      .map((c) => SEAT_TO_CODE[c.seatType] ?? "r")
+      .join(",");
+    params.set("s", seatCodes);
+    const trainCodes = segmentConfigs
+      .map((c) => (c.trainType ? (TRAIN_TO_CODE[c.trainType] ?? "") : ""))
+      .join(",");
+    if (trainCodes.replace(/,/g, "")) {
+      params.set("t", trainCodes);
+    }
+  }
   const query = params.toString();
   const nextUrl = query
     ? `${window.location.pathname}?${query}`
@@ -40,47 +90,59 @@ function updateQueryParams(
   window.history.replaceState(null, "", nextUrl);
 }
 
+/** Parse initial state from URL query parameters */
+function parseInitialParams(): {
+  fromId: string;
+  toId: string;
+  dateStr: string;
+  viaStations: string[];
+  segmentConfigs: SegmentConfig[];
+} {
+  const params = new URLSearchParams(window.location.search);
+  const fromId = params.get("from") ?? "";
+  const toId = params.get("to") ?? "";
+  const dateStr = normalizeDateStr(params.get("date"));
+
+  const viaStr = params.get("via") ?? "";
+  const viaStations = viaStr ? viaStr.split(",").filter(Boolean) : [];
+
+  const numSegments = viaStations.length + 1;
+  const seatStr = params.get("s") ?? "";
+  const seatCodes = seatStr ? seatStr.split(",") : [];
+  const trainStr = params.get("t") ?? "";
+  const trainCodes = trainStr ? trainStr.split(",") : [];
+
+  const segmentConfigs: SegmentConfig[] = [];
+  for (let i = 0; i < numSegments; i++) {
+    segmentConfigs.push({
+      seatType: CODE_TO_SEAT[seatCodes[i]] ?? "reserved",
+      trainType: trainCodes[i]
+        ? (CODE_TO_TRAIN[trainCodes[i]] ?? null)
+        : null,
+    });
+  }
+
+  return { fromId, toId, dateStr, viaStations, segmentConfigs };
+}
+
+const INITIAL = parseInitialParams();
+
 function App() {
-  const [fromId, setFromId] = useState("");
-  const [toId, setToId] = useState("");
-  const [dateStr, setDateStr] = useState(toDateInputValue(new Date()));
-  const [fares, setFares] = useState<CalculatedFares | null>(null);
-  const [viaResult, setViaResult] = useState<ViaFareResultType | null>(null);
-  const [searched, setSearched] = useState(false);
-  const [error, setError] = useState("");
+  const [fromId, setFromId] = useState(INITIAL.fromId);
+  const [toId, setToId] = useState(INITIAL.toId);
+  const [dateStr, setDateStr] = useState(INITIAL.dateStr);
+  const [viaStations, setViaStations] = useState<string[]>(
+    INITIAL.viaStations,
+  );
+  const [segmentConfigs, setSegmentConfigs] = useState<SegmentConfig[]>(
+    INITIAL.segmentConfigs,
+  );
 
-  // 経由駅と区間設定
-  const [viaStations, setViaStations] = useState<string[]>([]);
-  const [segmentConfigs, setSegmentConfigs] = useState<SegmentConfig[]>([
-    { seatType: "reserved", trainType: null },
-  ]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const initialFrom = params.get("from") ?? "";
-    const initialTo = params.get("to") ?? "";
-    const initialDate = normalizeDateStr(params.get("date"));
-
-    setFromId(initialFrom);
-    setToId(initialTo);
-    setDateStr(initialDate);
-
-    if (initialFrom && initialTo) {
-      const [y, mo, d] = initialDate.split("-").map(Number);
-      const date = new Date(y, mo - 1, d);
-      const result = calculateAllFares(initialFrom, initialTo, date);
-      setFares(result);
-      setSearched(true);
-      if (!result) {
-        setError("この区間の料金データが見つかりませんでした。");
-      }
-    }
-  }, []);
+  const hasViaStations = viaStations.length > 0;
 
   // 経由駅変更時にセグメント設定を同期
   const handleViaStationsChange = (newVias: string[]) => {
     setViaStations(newVias);
-    // 経由駅がクリアされた場合、セグメント設定もリセット
     if (newVias.length === 0) {
       setSegmentConfigs([{ seatType: "reserved", trainType: null }]);
     }
@@ -90,30 +152,42 @@ function App() {
     setSegmentConfigs(configs);
   };
 
-  const hasViaStations = viaStations.length > 0;
-
-  const handleSearch = () => {
-    setError("");
-    setViaResult(null);
-
-    if (!fromId || !toId) {
-      setError("出発駅と到着駅を選択してください。");
-      return;
+  // スワップ時に経由駅・セグメント設定も反転
+  const handleSwap = () => {
+    setFromId(toId);
+    setToId(fromId);
+    if (viaStations.length > 0) {
+      setViaStations([...viaStations].reverse());
+      setSegmentConfigs([...segmentConfigs].reverse());
     }
-    if (fromId === toId) {
-      setError("出発駅と到着駅が同じです。");
-      return;
-    }
-    if (!dateStr) {
-      setError("移動日を選択してください。");
-      return;
-    }
+  };
 
+  // バリデーションメッセージ（結果エリアに表示）
+  const validationMessage = useMemo(() => {
+    if (!fromId && !toId) return "出発駅と到着駅を選択してください。";
+    if (!fromId) return "出発駅を選択してください。";
+    if (!toId) return "到着駅を選択してください。";
+    if (fromId === toId) return "出発駅と到着駅が同じです。";
+    return null;
+  }, [fromId, toId]);
+
+  const date = useMemo(() => {
     const [y, mo, d] = dateStr.split("-").map(Number);
-    const date = new Date(y, mo - 1, d);
+    return new Date(y, mo - 1, d);
+  }, [dateStr]);
+
+  // 自動計算
+  const { fares, viaResult, computeError } = useMemo<{
+    fares: CalculatedFares | null;
+    viaResult: ViaFareResultType | null;
+    computeError: string | null;
+  }>(() => {
+    if (validationMessage) {
+      return { fares: null, viaResult: null, computeError: null };
+    }
 
     if (hasViaStations) {
-      // 経由駅あり → via計算
+      // 経由駅あり
       const allStops = [fromId, ...viaStations, toId];
       const segments: JourneySegment[] = [];
       for (let i = 0; i < allStops.length - 1; i++) {
@@ -125,41 +199,41 @@ function App() {
         });
       }
 
-      // バリデーション: グリーン車の連続性
+      // グリーン車の連続性チェック（エラーはDetailedSettings内で表示）
       if (!validateGreenContiguity(segments)) {
-        setError("グリーン車を指定する区間は連続している必要があります。");
-        return;
+        return { fares: null, viaResult: null, computeError: null };
       }
 
       const result = calculateViaFare(segments, date);
       if (!result) {
-        setError("この区間の料金データが見つかりませんでした。");
-        return;
+        return {
+          fares: null,
+          viaResult: null,
+          computeError: "この区間の料金データが見つかりませんでした。",
+        };
       }
-      setViaResult(result);
-      setFares(null);
-      setSearched(true);
+      return { fares: null, viaResult: result, computeError: null };
     } else {
-      // 経由駅なし → 従来の計算
+      // 経由駅なし
       const result = calculateAllFares(fromId, toId, date);
-      setFares(result);
-      setViaResult(null);
-      setSearched(true);
       if (!result) {
-        setError("この区間の料金データが見つかりませんでした。");
+        return {
+          fares: null,
+          viaResult: null,
+          computeError: "この区間の料金データが見つかりませんでした。",
+        };
       }
+      return { fares: result, viaResult: null, computeError: null };
     }
+  }, [fromId, toId, dateStr, date, viaStations, segmentConfigs, hasViaStations, validationMessage]);
 
-    updateQueryParams(fromId, toId, dateStr);
-  };
+  // URL同期
+  useEffect(() => {
+    updateQueryParams(fromId, toId, dateStr, viaStations, segmentConfigs);
+  }, [fromId, toId, dateStr, viaStations, segmentConfigs]);
 
   const fromStation = findStation(fromId);
   const toStation = findStation(toId);
-
-  const date = useMemo(() => {
-    const [y, mo, d] = dateStr.split("-").map(Number);
-    return new Date(y, mo - 1, d);
-  }, [dateStr]);
 
   return (
     <div className="app">
@@ -177,9 +251,7 @@ function App() {
             onFromChange={setFromId}
             onToChange={setToId}
             onDateChange={setDateStr}
-            onSearch={handleSearch}
-            error={error}
-            hasViaStations={hasViaStations}
+            onSwap={handleSwap}
           >
             <DetailedSettings
               fromId={fromId}
@@ -192,7 +264,24 @@ function App() {
           </SearchForm>
         </section>
 
-        {searched && fares && !hasViaStations && (
+        {/* バリデーションメッセージ */}
+        {validationMessage && (
+          <section className="result-section">
+            <p className="result-message">{validationMessage}</p>
+          </section>
+        )}
+
+        {/* 計算エラー */}
+        {!validationMessage && computeError && (
+          <section className="result-section">
+            <p className="result-message result-message--error">
+              {computeError}
+            </p>
+          </section>
+        )}
+
+        {/* 通常結果 */}
+        {fares && !hasViaStations && (
           <section className="result-section">
             <div className="result-header">
               <h2 className="result-title">
@@ -206,15 +295,18 @@ function App() {
           </section>
         )}
 
-        {searched && viaResult && hasViaStations && (
+        {/* 経由結果 */}
+        {viaResult && hasViaStations && (
           <section className="result-section">
             <div className="result-header">
               <h2 className="result-title">
                 {fromStation?.name ?? fromId}
-                {viaStations.map((v) => {
-                  const s = findStation(v);
-                  return ` → ${s?.name ?? v}`;
-                }).join("")}
+                {viaStations
+                  .map((v) => {
+                    const s = findStation(v);
+                    return ` → ${s?.name ?? v}`;
+                  })
+                  .join("")}
                 {" → "}
                 {toStation?.name ?? toId}
               </h2>

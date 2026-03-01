@@ -9,9 +9,7 @@ interface SearchFormProps {
   onFromChange: (id: string) => void;
   onToChange: (id: string) => void;
   onDateChange: (date: string) => void;
-  onSearch: () => void;
-  error?: string;
-  hasViaStations?: boolean;
+  onSwap: () => void;
   children?: React.ReactNode;
 }
 
@@ -22,17 +20,9 @@ const SearchForm: React.FC<SearchFormProps> = ({
   onFromChange,
   onToChange,
   onDateChange,
-  onSearch,
-  error,
-  hasViaStations,
+  onSwap,
   children,
 }) => {
-  const handleSwap = () => {
-    const tmp = fromId;
-    onFromChange(toId);
-    onToChange(tmp);
-  };
-
   const selectedDate = dateStr ? new Date(dateStr) : null;
 
   return (
@@ -46,7 +36,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
         />
         <button
           className="swap-btn"
-          onClick={handleSwap}
+          onClick={onSwap}
           title="出発・到着を入れ替え"
         >
           ⇄
@@ -74,16 +64,9 @@ const SearchForm: React.FC<SearchFormProps> = ({
             {selectedDate && <SeasonBadge date={selectedDate} />}
           </div>
         </div>
-
       </div>
 
       {children}
-
-      {error && <p className="search-error">{error}</p>}
-
-      <button className="search-btn" onClick={onSearch}>
-        {hasViaStations ? "経由料金を検索" : "料金を検索"}
-      </button>
     </div>
   );
 };
