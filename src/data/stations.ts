@@ -216,6 +216,73 @@ export function getAvailableTrains(
 }
 
 /**
+ * 区間で利用可能な列車リストを返す（停車駅フィルタリング済み）
+ *
+ * エリアベースの `getAvailableTrains` に加え、
+ * 両端駅に実際に停車する列車だけに絞り込む。
+ */
+export function getAvailableTrainsFiltered(
+  fromId: string,
+  toId: string,
+): TrainType[] {
+  const areaTrains = getAvailableTrains(fromId, toId);
+  return areaTrains.filter(
+    (t) => doesTrainStopAt(t, fromId) && doesTrainStopAt(t, toId),
+  );
+}
+
+/**
+ * 各列車の停車駅リスト
+ */
+const TRAIN_STOPS: Record<TrainType, Set<string>> = {
+  nozomi: new Set([
+    "tokyo", "shinagawa", "shinyokohama", "nagoya", "kyoto", "shinosaka",
+    "shinkobe", "okayama", "hiroshima", "kokura", "hakata",
+    "nishiakashi", "himeji", "fukuyama", "tokuyama", "shinyamaguchi",
+  ]),
+  hikari: new Set(
+    // 東京〜博多の全駅から新富士・三河安城・厚狭を除く
+    STATIONS
+      .filter((s) => {
+        const idx = STATIONS.indexOf(s);
+        return idx <= HAKATA_INDEX;
+      })
+      .map((s) => s.id)
+      .filter((id) => !["shinfuji", "mikawaanjo", "asa"].includes(id)),
+  ),
+  kodama: new Set(
+    // 東京〜博多の全駅
+    STATIONS.filter((_, idx) => idx <= HAKATA_INDEX).map((s) => s.id),
+  ),
+  mizuho: new Set([
+    "shinosaka", "shinkobe", "himeji", "okayama", "fukuyama", "hiroshima",
+    "shinyamaguchi", "kokura", "hakata", "kumamoto", "sendai", "kagoshimachuo",
+  ]),
+  sakura: new Set([
+    // 山陽区間の停車駅
+    "shinosaka", "shinkobe", "nishiakashi", "himeji", "okayama", "fukuyama",
+    "hiroshima", "tokuyama", "shinyamaguchi", "shinshimonoseki", "kokura",
+    // 博多〜鹿児島中央の全駅
+    ...STATIONS
+      .filter((_, idx) => idx >= HAKATA_INDEX)
+      .map((s) => s.id),
+  ]),
+  tsubame: new Set(
+    // 新下関〜鹿児島中央の全駅
+    STATIONS
+      .filter((_, idx) => idx >= STATIONS.findIndex((s) => s.id === "shinshimonoseki"))
+      .map((s) => s.id),
+  ),
+};
+
+/**
+ * 指定した列車が指定した駅に停車するか判定
+ */
+export function doesTrainStopAt(trainType: TrainType, stationId: string): boolean {
+  return TRAIN_STOPS[trainType]?.has(stationId) ?? false;
+}
+
+/**
  * 列車がのぞみ/みずほグループかどうか判定
  */
 export function isNozomiMizuho(trainType: TrainType | null): boolean {

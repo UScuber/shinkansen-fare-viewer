@@ -501,6 +501,17 @@
   cursor: not-allowed;
 }
 
+.form-select--error {
+  border-color: #c62828;
+  box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.2);
+}
+
+.segment-config__stop-error {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #c62828;
+}
+
 .detailed-settings__via-controls {
   display: flex;
   flex-direction: column;

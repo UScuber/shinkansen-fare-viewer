@@ -2,7 +2,8 @@ import React from "react";
 import {
   findStation,
   getStationsBetween,
-  getAvailableTrains,
+  getAvailableTrainsFiltered,
+  doesTrainStopAt,
 } from "../data/stations";
 import type { Station } from "../data/stations";
 import { validateGreenContiguity } from "../data/viaCalculator";
@@ -204,8 +205,14 @@ const DetailedSettings: React.FC<Props> = ({
                 seatType: "reserved" as SeatType,
                 trainType: null,
               };
-              const availableTrains = getAvailableTrains(seg.fromId, seg.toId);
+              const availableTrains = getAvailableTrainsFiltered(seg.fromId, seg.toId);
               const isFree = config.seatType === "free";
+              // 選択済み列車が停車駅に該当しないかチェック（未選択時はエラーなし）
+              const trainStopError =
+                !isFree &&
+                config.trainType !== null &&
+                (!doesTrainStopAt(config.trainType, seg.fromId) ||
+                  !doesTrainStopAt(config.trainType, seg.toId));
 
               // この区間の後に表示する経由駅
               const viaIndex = i;
@@ -243,7 +250,7 @@ const DetailedSettings: React.FC<Props> = ({
                       <div className="segment-config__train">
                         <label className="form-label--small">列車</label>
                         <select
-                          className="form-select--small"
+                          className={`form-select--small${trainStopError ? " form-select--error" : ""}`}
                           value={config.trainType ?? ""}
                           onChange={(e) =>
                             handleTrainChange(
@@ -256,6 +263,11 @@ const DetailedSettings: React.FC<Props> = ({
                           disabled={isFree}
                         >
                           <option value="">-- 指定なし --</option>
+                          {trainStopError && config.trainType && (
+                            <option value={config.trainType} disabled>
+                              {TRAIN_NAMES[config.trainType]}
+                            </option>
+                          )}
                           {availableTrains.map((t) => (
                             <option key={t} value={t}>
                               {TRAIN_NAMES[t]}
@@ -264,6 +276,11 @@ const DetailedSettings: React.FC<Props> = ({
                         </select>
                       </div>
                     </div>
+                    {trainStopError && (
+                      <p className="segment-config__stop-error">
+                        「{TRAIN_NAMES[config.trainType!]}」は{fromName}または{toName}に停車しません。
+                      </p>
+                    )}
                   </div>
 
                   {/* 区間と区間の間に経由駅を表示 */}
