@@ -781,3 +781,150 @@
   text-align: right;
   margin-top: 4px;
 }
+
+/* ===== Split Fare Result ===== */
+.split-result {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.split-result__section {
+  border: 2px solid #43a047;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f9fbe7;
+}
+
+.split-result__section--mixed {
+  border-color: #1565c0;
+  background: #e3f2fd;
+}
+
+.split-result__section-title {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: #43a047;
+  color: #fff;
+}
+
+.split-result__section--mixed .split-result__section-title {
+  background: #1565c0;
+}
+
+.split-result__segment-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.split-result__segment-item {
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.split-result__segment-route {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a237e;
+  margin-bottom: 4px;
+}
+
+.split-result__segment-detail {
+  font-size: 0.85rem;
+  color: #333;
+}
+
+.split-result__segment-product {
+  font-size: 0.85rem;
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.split-result__section--mixed .split-result__segment-product {
+  color: #1565c0;
+}
+
+.split-result__segment-fare {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a237e;
+  text-align: right;
+  margin-top: 4px;
+}
+
+.split-result__note {
+  font-size: 0.78rem;
+  color: #757575;
+  font-weight: 400;
+}
+
+.split-result__segment-item--ticket {
+  background: #f1f8e9;
+  border-color: #a5d6a7;
+}
+
+.split-result__segment-item--bundled {
+  background: #fff;
+}
+
+/* 通常きっぷグループ（早特混合内） */
+.split-result__ticket-group {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.split-result__ticket-group-header {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2e7d32;
+  background: #f1f8e9;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.split-result__ticket-group-items {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.split-result__ticket-group-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.83rem;
+  color: #555;
+}
+
+.split-result__ticket-group-row--subtotal {
+  padding-top: 4px;
+  border-top: 1px solid #e0e0e0;
+  font-weight: 600;
+  color: #333;
+}
+
+.split-result__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-top: 1px solid #e0e0e0;
+  background: #fff;
+}
+
+.split-result__total-value {
+  font-size: 1.1rem;
+  font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
+  color: #1a237e;
+}

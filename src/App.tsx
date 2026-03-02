@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import SearchForm from "./components/SearchForm";
 import FareTable from "./components/FareTable";
+import SplitFareResult from "./components/SplitFareResult";
 import DetailedSettings from "./components/DetailedSettings";
 import ViaFareResult from "./components/ViaFareResult";
 import { calculateAllFares } from "./data/calculator";
 import type { CalculatedFares } from "./data/calculator";
+import {
+  searchSplitFares,
+  type SplitSearchResult,
+} from "./data/splitFareSearch";
 import {
   calculateViaFare,
   validateGreenContiguity,
@@ -298,13 +303,19 @@ function App() {
   }, [dateStr]);
 
   // 自動計算
-  const { fares, viaResult, computeError } = useMemo<{
+  const { fares, viaResult, splitResult, computeError } = useMemo<{
     fares: CalculatedFares | null;
     viaResult: ViaFareResultType | null;
+    splitResult: SplitSearchResult | null;
     computeError: string | null;
   }>(() => {
     if (validationMessage) {
-      return { fares: null, viaResult: null, computeError: null };
+      return {
+        fares: null,
+        viaResult: null,
+        splitResult: null,
+        computeError: null,
+      };
     }
 
     if (hasViaStations) {
@@ -322,7 +333,12 @@ function App() {
 
       // グリーン車の連続性チェック（エラーはDetailedSettings内で表示）
       if (!validateGreenContiguity(segments)) {
-        return { fares: null, viaResult: null, computeError: null };
+        return {
+          fares: null,
+          viaResult: null,
+          splitResult: null,
+          computeError: null,
+        };
       }
 
       const result = calculateViaFare(segments, date);
@@ -330,10 +346,16 @@ function App() {
         return {
           fares: null,
           viaResult: null,
+          splitResult: null,
           computeError: "この区間の料金データが見つかりませんでした。",
         };
       }
-      return { fares: null, viaResult: result, computeError: null };
+      return {
+        fares: null,
+        viaResult: result,
+        splitResult: null,
+        computeError: null,
+      };
     } else {
       // 経由駅なし
       const result = calculateAllFares(fromId, toId, date);
@@ -341,10 +363,18 @@ function App() {
         return {
           fares: null,
           viaResult: null,
+          splitResult: null,
           computeError: "この区間の料金データが見つかりませんでした。",
         };
       }
-      return { fares: result, viaResult: null, computeError: null };
+      // 分割最安値の自動探索
+      const split = searchSplitFares(fromId, toId, date, fareFilter);
+      return {
+        fares: result,
+        viaResult: null,
+        splitResult: split,
+        computeError: null,
+      };
     }
   }, [
     fromId,
@@ -354,6 +384,7 @@ function App() {
     segmentConfigs,
     hasViaStations,
     validationMessage,
+    fareFilter,
   ]);
 
   // URL同期
@@ -421,6 +452,7 @@ function App() {
               </div>
             </div>
             <FareTable fares={fares} date={date} filter={fareFilter} />
+            {splitResult && <SplitFareResult result={splitResult} />}
           </section>
         )}
 
