@@ -15,6 +15,7 @@ import type {
   TrainType,
   SegmentConfig,
   JourneySegment,
+  FareFilter,
   ViaFareResult as ViaFareResultType,
 } from "./data/types";
 import "./App.css";
@@ -76,7 +77,7 @@ function updateQueryParams(
   if (viaStations.length > 0) {
     params.set("via", viaStations.join(","));
     const seatCodes = segmentConfigs
-      .map((c) => SEAT_TO_CODE[c.seatType] ?? "r")
+      .map((c) => SEAT_TO_CODE[c.seatType ?? ""] ?? "r")
       .join(",");
     params.set("s", seatCodes);
     const trainCodes = segmentConfigs
@@ -84,6 +85,17 @@ function updateQueryParams(
       .join(",");
     if (trainCodes.replace(/,/g, "")) {
       params.set("t", trainCodes);
+    }
+  } else {
+    // フィルタモード: seatType/trainTypeが指定されている場合のみURLに保存
+    const config = segmentConfigs[0];
+    if (config) {
+      if (config.seatType !== null) {
+        params.set("s", SEAT_TO_CODE[config.seatType] ?? "");
+      }
+      if (config.trainType !== null) {
+        params.set("t", TRAIN_TO_CODE[config.trainType] ?? "");
+      }
     }
   }
   const query = params.toString();
@@ -109,21 +121,53 @@ function parseInitialParams(): {
   const viaStr = params.get("via") ?? "";
   const viaStations = viaStr ? viaStr.split(",").filter(Boolean) : [];
 
-  const numSegments = viaStations.length + 1;
   const seatStr = params.get("s") ?? "";
   const seatCodes = seatStr ? seatStr.split(",") : [];
   const trainStr = params.get("t") ?? "";
   const trainCodes = trainStr ? trainStr.split(",") : [];
 
-  const segmentConfigs: SegmentConfig[] = [];
-  for (let i = 0; i < numSegments; i++) {
-    segmentConfigs.push({
-      seatType: CODE_TO_SEAT[seatCodes[i]] ?? "reserved",
-      trainType: trainCodes[i] ? (CODE_TO_TRAIN[trainCodes[i]] ?? null) : null,
-    });
+  if (viaStations.length > 0) {
+    // 経由駅モード
+    const numSegments = viaStations.length + 1;
+    const segmentConfigs: SegmentConfig[] = [];
+    for (let i = 0; i < numSegments; i++) {
+      segmentConfigs.push({
+        seatType: CODE_TO_SEAT[seatCodes[i]] ?? "reserved",
+        trainType: trainCodes[i]
+          ? (CODE_TO_TRAIN[trainCodes[i]] ?? null)
+          : null,
+      });
+    }
+    return { fromId, toId, dateStr, viaStations, segmentConfigs };
   }
 
-  return { fromId, toId, dateStr, viaStations, segmentConfigs };
+  // フィルタモード: sまたはtパラメータがあればフィルタを復元
+  const hasFilterParams = seatStr !== "" || trainStr !== "";
+  if (hasFilterParams) {
+    const seatType: SeatType | null =
+      seatCodes[0] && CODE_TO_SEAT[seatCodes[0]]
+        ? CODE_TO_SEAT[seatCodes[0]]
+        : null;
+    const trainType: TrainType | null =
+      trainCodes[0] && CODE_TO_TRAIN[trainCodes[0]]
+        ? CODE_TO_TRAIN[trainCodes[0]]
+        : null;
+    return {
+      fromId,
+      toId,
+      dateStr,
+      viaStations: [],
+      segmentConfigs: [{ seatType, trainType }],
+    };
+  }
+
+  return {
+    fromId,
+    toId,
+    dateStr,
+    viaStations: [],
+    segmentConfigs: [{ seatType: null, trainType: null }],
+  };
 }
 
 const INITIAL = parseInitialParams();
@@ -169,7 +213,8 @@ function App() {
   const handleViaStationsChange = (newVias: string[]) => {
     setViaStations(newVias);
     if (newVias.length === 0) {
-      setSegmentConfigs([{ seatType: "reserved", trainType: null }]);
+      // フィルタモードにリセット
+      setSegmentConfigs([{ seatType: null, trainType: null }]);
     }
   };
 
@@ -184,6 +229,8 @@ function App() {
       setSegmentConfigs(
         sanitizeConfigs(newFrom, toId, viaStations, segmentConfigs),
       );
+    } else if (!hasViaStations) {
+      setSegmentConfigs((prev) => sanitizeConfigs(newFrom, toId, [], prev));
     }
   };
 
@@ -194,6 +241,8 @@ function App() {
       setSegmentConfigs(
         sanitizeConfigs(fromId, newTo, viaStations, segmentConfigs),
       );
+    } else if (!hasViaStations) {
+      setSegmentConfigs((prev) => sanitizeConfigs(fromId, newTo, [], prev));
     }
   };
 
@@ -208,8 +257,22 @@ function App() {
     if (viaStations.length > 0) {
       setViaStations(newVias);
       setSegmentConfigs(sanitizeConfigs(newFrom, newTo, newVias, newConfigs));
+    } else {
+      setSegmentConfigs(sanitizeConfigs(newFrom, newTo, [], newConfigs));
     }
   };
+
+  // フィルタ設定を導出
+  const fareFilter: FareFilter | null = useMemo(() => {
+    if (hasViaStations) return null;
+    const config = segmentConfigs[0];
+    if (!config) return null;
+    if (config.seatType === null && config.trainType === null) return null;
+    return {
+      seatType: config.seatType,
+      trainType: config.trainType,
+    };
+  }, [hasViaStations, segmentConfigs]);
 
   // バリデーションメッセージ（結果エリアに表示）
   const validationMessage = useMemo(() => {
@@ -357,7 +420,7 @@ function App() {
                 <span>{dateStr}</span>
               </div>
             </div>
-            <FareTable fares={fares} date={date} />
+            <FareTable fares={fares} date={date} filter={fareFilter} />
           </section>
         )}
 

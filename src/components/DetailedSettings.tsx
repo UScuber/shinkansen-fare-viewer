@@ -99,12 +99,12 @@ const DetailedSettings: React.FC<Props> = ({
   onViaStationsChange,
   onSegmentConfigsChange,
 }) => {
-  const [isOpen, setIsOpen] = React.useState(viaStations.length > 0);
-
   // 出発駅・到着駅が未設定なら何も表示しない
   if (!fromId || !toId || fromId === toId) {
     return null;
   }
+
+  const isFilterMode = viaStations.length === 0;
 
   // 経由駅候補：出発〜到着間の駅（両端含まない）
   const betweenStations = getStationsBetween(fromId, toId);
@@ -119,9 +119,14 @@ const DetailedSettings: React.FC<Props> = ({
     if (available.length === 0) return;
     const newVias = [...viaStations, available[0].id];
     onViaStationsChange(newVias);
+    // フィルタモードからの遷移時にnull seatTypeをreservedに変換
+    const fixedConfigs = segmentConfigs.map((c) => ({
+      ...c,
+      seatType: c.seatType ?? ("reserved" as SeatType),
+    }));
     // 新しいセグメント設定を追加
     const newConfigs = [
-      ...segmentConfigs,
+      ...fixedConfigs,
       { seatType: "reserved" as SeatType, trainType: null },
     ];
     onSegmentConfigsChange(newConfigs);
@@ -160,7 +165,8 @@ const DetailedSettings: React.FC<Props> = ({
   };
 
   // セグメント設定の変更
-  const handleSeatChange = (index: number, seatType: SeatType) => {
+  const handleSeatChange = (index: number, value: string) => {
+    const seatType = value === "" ? null : (value as SeatType);
     const newConfigs = [...segmentConfigs];
     newConfigs[index] = {
       ...newConfigs[index],
@@ -188,162 +194,145 @@ const DetailedSettings: React.FC<Props> = ({
   }));
   const greenValid = validateGreenContiguity(journeySegments);
 
-  // 経由駅がない場合は折りたたみトグルのみ
-  if (!isOpen) {
-    return (
-      <div className="detailed-settings">
-        <button
-          className="detailed-settings__toggle"
-          onClick={() => setIsOpen(true)}
-        >
-          ▶ 詳細設定(乗り継ぎや列車を指定する)
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="detailed-settings">
-      <button
-        className="detailed-settings__toggle detailed-settings__toggle--open"
-        onClick={() => setIsOpen(false)}
-      >
-        ▼ 詳細設定(乗り継ぎや列車を指定する)
-      </button>
-
       <div className="detailed-settings__content">
-        {viaStations.length > 0 && (
-          <div className="detailed-settings__segments">
-            {segments.map((seg, i) => {
-              const fromName = findStation(seg.fromId)?.name ?? seg.fromId;
-              const toName = findStation(seg.toId)?.name ?? seg.toId;
-              const config = segmentConfigs[i] ?? {
-                seatType: "reserved" as SeatType,
-                trainType: null,
-              };
-              const availableTrains = getAvailableTrainsFiltered(
-                seg.fromId,
-                seg.toId,
-              );
-              const isFree = config.seatType === "free";
-              // 自由席以外で列車が未選択かどうか
-              const trainNotSelected = !isFree && config.trainType === null;
-              // 選択済み列車が停車駅に該当しないかチェック（未選択時はエラーなし）
-              const trainStopError =
-                !isFree &&
-                config.trainType !== null &&
-                (!doesTrainStopAt(config.trainType, seg.fromId) ||
-                  !doesTrainStopAt(config.trainType, seg.toId));
+        <div className="detailed-settings__segments">
+          {segments.map((seg, i) => {
+            const fromName = findStation(seg.fromId)?.name ?? seg.fromId;
+            const toName = findStation(seg.toId)?.name ?? seg.toId;
+            const config = segmentConfigs[i] ?? {
+              seatType: isFilterMode ? null : ("reserved" as SeatType),
+              trainType: null,
+            };
+            const availableTrains = getAvailableTrainsFiltered(
+              seg.fromId,
+              seg.toId,
+            );
+            const isFree = config.seatType === "free";
+            // 自由席以外で列車が未選択かどうか（フィルタモードではハイライトしない）
+            const trainNotSelected =
+              !isFilterMode && !isFree && config.trainType === null;
+            // 選択済み列車が停車駅に該当しないかチェック（未選択時はエラーなし）
+            const trainStopError =
+              !isFree &&
+              config.trainType !== null &&
+              (!doesTrainStopAt(config.trainType, seg.fromId) ||
+                !doesTrainStopAt(config.trainType, seg.toId));
 
-              // この区間の後に表示する経由駅
-              const viaIndex = i;
-              const hasViaAfter = viaIndex < viaStations.length;
+            // この区間の後に表示する経由駅
+            const viaIndex = i;
+            const hasViaAfter = viaIndex < viaStations.length;
 
-              let viaCandidates: Station[] = [];
-              if (hasViaAfter) {
-                const prevStation =
-                  viaIndex === 0 ? fromId : viaStations[viaIndex - 1];
-                const nextStation =
-                  viaIndex === viaStations.length - 1
-                    ? toId
-                    : viaStations[viaIndex + 1];
-                viaCandidates = getStationsBetween(prevStation, nextStation);
-              }
+            let viaCandidates: Station[] = [];
+            if (hasViaAfter) {
+              const prevStation =
+                viaIndex === 0 ? fromId : viaStations[viaIndex - 1];
+              const nextStation =
+                viaIndex === viaStations.length - 1
+                  ? toId
+                  : viaStations[viaIndex + 1];
+              viaCandidates = getStationsBetween(prevStation, nextStation);
+            }
 
-              return (
-                <React.Fragment key={i}>
-                  <div className="segment-config">
-                    <div className="segment-config__label">
-                      区間{i + 1}: {fromName} → {toName}
+            return (
+              <React.Fragment key={i}>
+                <div className="segment-config">
+                  <div className="segment-config__label">
+                    {isFilterMode
+                      ? `区間: ${fromName} → ${toName}`
+                      : `区間${i + 1}: ${fromName} → ${toName}`}
+                  </div>
+                  <div className="segment-config__controls">
+                    <div className="segment-config__seat">
+                      <label className="form-label--small">座席</label>
+                      <select
+                        className="form-select--small"
+                        value={config.seatType ?? ""}
+                        onChange={(e) => handleSeatChange(i, e.target.value)}
+                      >
+                        {isFilterMode && <option value="">-- 未選択 --</option>}
+                        <option value="reserved">指定席</option>
+                        <option value="green">グリーン車</option>
+                        <option value="free">自由席</option>
+                      </select>
                     </div>
-                    <div className="segment-config__controls">
-                      <div className="segment-config__seat">
-                        <label className="form-label--small">座席</label>
-                        <select
-                          className="form-select--small"
-                          value={config.seatType}
-                          onChange={(e) =>
-                            handleSeatChange(i, e.target.value as SeatType)
-                          }
-                        >
-                          <option value="reserved">指定席</option>
-                          <option value="green">グリーン車</option>
-                          <option value="free">自由席</option>
-                        </select>
-                      </div>
-                      <div className="segment-config__train">
-                        <label className="form-label--small">列車</label>
-                        <select
-                          className={`form-select--small${trainStopError ? " form-select--error" : ""}${trainNotSelected ? " form-select--placeholder" : ""}`}
-                          value={config.trainType ?? ""}
-                          onChange={(e) =>
-                            handleTrainChange(
-                              i,
-                              e.target.value === ""
-                                ? null
-                                : (e.target.value as TrainType),
-                            )
-                          }
-                          disabled={isFree}
-                        >
+                    <div className="segment-config__train">
+                      <label className="form-label--small">列車</label>
+                      <select
+                        className={`form-select--small${trainStopError ? " form-select--error" : ""}${trainNotSelected ? " form-select--placeholder" : ""}`}
+                        value={config.trainType ?? ""}
+                        onChange={(e) =>
+                          handleTrainChange(
+                            i,
+                            e.target.value === ""
+                              ? null
+                              : (e.target.value as TrainType),
+                          )
+                        }
+                        disabled={isFree}
+                      >
+                        {isFilterMode ? (
+                          <option value="">-- 未選択 --</option>
+                        ) : (
                           <option value="" disabled hidden>
                             列車を選択
                           </option>
-                          {trainStopError && config.trainType && (
-                            <option value={config.trainType} disabled>
-                              {TRAIN_NAMES[config.trainType]}
-                            </option>
-                          )}
-                          {availableTrains.map((t) => (
-                            <option key={t} value={t}>
-                              {TRAIN_NAMES[t]}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    {trainStopError && (
-                      <p className="segment-config__stop-error">
-                        「{TRAIN_NAMES[config.trainType!]}」は{fromName}または
-                        {toName}
-                        に停車しません。
-                      </p>
-                    )}
-                  </div>
-
-                  {/* 区間と区間の間に経由駅を表示 */}
-                  {hasViaAfter && (
-                    <div className="via-station-row via-station-row--between">
-                      <span className="via-station-row__label">
-                        経由駅{viaIndex + 1}:
-                      </span>
-                      <select
-                        className="form-select--small via-station-row__select"
-                        value={viaStations[viaIndex]}
-                        onChange={(e) =>
-                          handleViaChange(viaIndex, e.target.value)
-                        }
-                      >
-                        {renderGroupedOptions(
-                          viaCandidates,
-                          viaStations,
-                          viaStations[viaIndex],
                         )}
+                        {trainStopError && config.trainType && (
+                          <option value={config.trainType} disabled>
+                            {TRAIN_NAMES[config.trainType]}
+                          </option>
+                        )}
+                        {availableTrains.map((t) => (
+                          <option key={t} value={t}>
+                            {TRAIN_NAMES[t]}
+                          </option>
+                        ))}
                       </select>
-                      <button
-                        className="via-station-row__remove"
-                        onClick={() => handleRemoveVia(viaIndex)}
-                        title="経由駅を削除"
-                      >
-                        ✕
-                      </button>
                     </div>
+                  </div>
+                  {trainStopError && (
+                    <p className="segment-config__stop-error">
+                      「{TRAIN_NAMES[config.trainType!]}」は{fromName}または
+                      {toName}
+                      に停車しません。
+                    </p>
                   )}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        )}
+                </div>
+
+                {/* 区間と区間の間に経由駅を表示 */}
+                {hasViaAfter && (
+                  <div className="via-station-row via-station-row--between">
+                    <span className="via-station-row__label">
+                      経由駅{viaIndex + 1}:
+                    </span>
+                    <select
+                      className="form-select--small via-station-row__select"
+                      value={viaStations[viaIndex]}
+                      onChange={(e) =>
+                        handleViaChange(viaIndex, e.target.value)
+                      }
+                    >
+                      {renderGroupedOptions(
+                        viaCandidates,
+                        viaStations,
+                        viaStations[viaIndex],
+                      )}
+                    </select>
+                    <button
+                      className="via-station-row__remove"
+                      onClick={() => handleRemoveVia(viaIndex)}
+                      title="経由駅を削除"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
 
         {/* グリーン車連続性エラー */}
         {!greenValid && viaStations.length > 0 && (

@@ -25,7 +25,14 @@ export type JourneySegment = {
 
 /** 区間ごとの設定（UI用） */
 export type SegmentConfig = {
-  seatType: SeatType;
+  /** null = フィルタモードで未選択 */
+  seatType: SeatType | null;
+  trainType: TrainType | null;
+};
+
+/** フィルター設定（経由駅なしモード） */
+export type FareFilter = {
+  seatType: SeatType | null;
   trainType: TrainType | null;
 };
 
