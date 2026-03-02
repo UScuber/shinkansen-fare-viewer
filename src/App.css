@@ -501,6 +501,17 @@
   cursor: not-allowed;
 }
 
+.form-select--placeholder {
+  border-color: #f9a825;
+  color: #9e9e9e;
+  background: #fffde7;
+}
+
+.form-select--placeholder option {
+  background: #fff;
+  color: #1a1a2e;
+}
+
 .form-select--error {
   border-color: #c62828;
   box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.2);

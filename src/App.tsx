@@ -6,7 +6,7 @@ import ViaFareResult from "./components/ViaFareResult";
 import { calculateAllFares } from "./data/calculator";
 import type { CalculatedFares } from "./data/calculator";
 import { calculateViaFare, validateGreenContiguity } from "./data/viaCalculator";
-import { findStation } from "./data/stations";
+import { findStation, getAvailableTrainsFiltered } from "./data/stations";
 import type {
   SeatType,
   TrainType,
@@ -140,6 +140,31 @@ function App() {
 
   const hasViaStations = viaStations.length > 0;
 
+  /**
+   * 区間リストに対してセグメント設定の列車選択を検証し、
+   * 無効になった列車をnullにリセットした新しい設定を返す
+   */
+  const sanitizeConfigs = (
+    newFrom: string,
+    newTo: string,
+    newVias: string[],
+    configs: SegmentConfig[],
+  ): SegmentConfig[] => {
+    const allStops = [newFrom, ...newVias, newTo];
+    return configs.map((config, i) => {
+      if (i >= allStops.length - 1) return config;
+      if (config.trainType === null || config.seatType === "free") return config;
+      const segFrom = allStops[i];
+      const segTo = allStops[i + 1];
+      if (!segFrom || !segTo) return config;
+      const available = getAvailableTrainsFiltered(segFrom, segTo);
+      if (!available.includes(config.trainType)) {
+        return { ...config, trainType: null };
+      }
+      return config;
+    });
+  };
+
   // 経由駅変更時にセグメント設定を同期
   const handleViaStationsChange = (newVias: string[]) => {
     setViaStations(newVias);
@@ -152,13 +177,33 @@ function App() {
     setSegmentConfigs(configs);
   };
 
+  // 出発駅の変更
+  const handleFromChange = (newFrom: string) => {
+    setFromId(newFrom);
+    if (viaStations.length > 0 && newFrom && toId) {
+      setSegmentConfigs(sanitizeConfigs(newFrom, toId, viaStations, segmentConfigs));
+    }
+  };
+
+  // 到着駅の変更
+  const handleToChange = (newTo: string) => {
+    setToId(newTo);
+    if (viaStations.length > 0 && fromId && newTo) {
+      setSegmentConfigs(sanitizeConfigs(fromId, newTo, viaStations, segmentConfigs));
+    }
+  };
+
   // スワップ時に経由駅・セグメント設定も反転
   const handleSwap = () => {
-    setFromId(toId);
-    setToId(fromId);
+    const newFrom = toId;
+    const newTo = fromId;
+    const newVias = [...viaStations].reverse();
+    const newConfigs = [...segmentConfigs].reverse();
+    setFromId(newFrom);
+    setToId(newTo);
     if (viaStations.length > 0) {
-      setViaStations([...viaStations].reverse());
-      setSegmentConfigs([...segmentConfigs].reverse());
+      setViaStations(newVias);
+      setSegmentConfigs(sanitizeConfigs(newFrom, newTo, newVias, newConfigs));
     }
   };
 
@@ -168,8 +213,17 @@ function App() {
     if (!fromId) return "出発駅を選択してください。";
     if (!toId) return "到着駅を選択してください。";
     if (fromId === toId) return "出発駅と到着駅が同じです。";
+    // 経由駅ありの場合、自由席以外の全区間で列車が選択されているかチェック
+    if (hasViaStations) {
+      const hasUnselectedTrain = segmentConfigs.some(
+        (c) => c.seatType !== "free" && c.trainType === null,
+      );
+      if (hasUnselectedTrain) {
+        return "各区間の列車を選択してください。";
+      }
+    }
     return null;
-  }, [fromId, toId]);
+  }, [fromId, toId, hasViaStations, segmentConfigs]);
 
   const date = useMemo(() => {
     const [y, mo, d] = dateStr.split("-").map(Number);
@@ -248,8 +302,8 @@ function App() {
             fromId={fromId}
             toId={toId}
             dateStr={dateStr}
-            onFromChange={setFromId}
-            onToChange={setToId}
+            onFromChange={handleFromChange}
+            onToChange={handleToChange}
             onDateChange={setDateStr}
             onSwap={handleSwap}
           >

@@ -136,11 +136,26 @@ const DetailedSettings: React.FC<Props> = ({
     onSegmentConfigsChange(newConfigs);
   };
 
-  // 経由駅の変更
+  // 経由駅の変更（無効になった列車選択をリセット）
   const handleViaChange = (index: number, stationId: string) => {
     const newVias = [...viaStations];
     newVias[index] = stationId;
+
+    // 新しい区間を再構築し、各区間で選択中の列車が有効かチェック
+    const newSegments = buildSegments(fromId, toId, newVias);
+    const newConfigs = segmentConfigs.map((config, i) => {
+      if (i >= newSegments.length) return config;
+      const seg = newSegments[i];
+      if (config.trainType === null || config.seatType === "free") return config;
+      const available = getAvailableTrainsFiltered(seg.fromId, seg.toId);
+      if (!available.includes(config.trainType)) {
+        return { ...config, trainType: null };
+      }
+      return config;
+    });
+
     onViaStationsChange(newVias);
+    onSegmentConfigsChange(newConfigs);
   };
 
   // セグメント設定の変更
@@ -207,6 +222,8 @@ const DetailedSettings: React.FC<Props> = ({
               };
               const availableTrains = getAvailableTrainsFiltered(seg.fromId, seg.toId);
               const isFree = config.seatType === "free";
+              // 自由席以外で列車が未選択かどうか
+              const trainNotSelected = !isFree && config.trainType === null;
               // 選択済み列車が停車駅に該当しないかチェック（未選択時はエラーなし）
               const trainStopError =
                 !isFree &&
@@ -250,7 +267,7 @@ const DetailedSettings: React.FC<Props> = ({
                       <div className="segment-config__train">
                         <label className="form-label--small">列車</label>
                         <select
-                          className={`form-select--small${trainStopError ? " form-select--error" : ""}`}
+                          className={`form-select--small${trainStopError ? " form-select--error" : ""}${trainNotSelected ? " form-select--placeholder" : ""}`}
                           value={config.trainType ?? ""}
                           onChange={(e) =>
                             handleTrainChange(
@@ -262,7 +279,7 @@ const DetailedSettings: React.FC<Props> = ({
                           }
                           disabled={isFree}
                         >
-                          <option value="">-- 指定なし --</option>
+                          <option value="" disabled hidden>列車を選択</option>
                           {trainStopError && config.trainType && (
                             <option value={config.trainType} disabled>
                               {TRAIN_NAMES[config.trainType]}
