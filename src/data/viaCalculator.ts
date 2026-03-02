@@ -506,7 +506,8 @@ function calculateGreenAdjustment(
   }
 
   // Get actual station IDs from indices
-  if (greenFromIdx >= STATIONS.length || greenToIdx >= STATIONS.length) return 0;
+  if (greenFromIdx >= STATIONS.length || greenToIdx >= STATIONS.length)
+    return 0;
   const greenFromId = STATIONS[greenFromIdx].id;
   const greenToId = STATIONS[greenToIdx].id;
 
@@ -546,9 +547,7 @@ function calculateNozomiSurcharge(
 } {
   // のぞみ/みずほに乗車するセグメントを特定
   const nozomiSegments = segments.filter(
-    (s) =>
-      isNozomiMizuho(s.trainType) &&
-      s.seatType !== "free", // 自由席にはのぞみ加算なし
+    (s) => isNozomiMizuho(s.trainType) && s.seatType !== "free", // 自由席にはのぞみ加算なし
   );
 
   if (nozomiSegments.length === 0) {
@@ -605,8 +604,10 @@ function calculateNozomiSurcharge(
     if (hi > nozomiEndIdx) nozomiEndIdx = hi;
   }
 
-  const nozomiStartId = nozomiStartIdx < STATIONS.length ? STATIONS[nozomiStartIdx].id : null;
-  const nozomiEndId = nozomiEndIdx < STATIONS.length ? STATIONS[nozomiEndIdx].id : null;
+  const nozomiStartId =
+    nozomiStartIdx < STATIONS.length ? STATIONS[nozomiStartIdx].id : null;
+  const nozomiEndId =
+    nozomiEndIdx < STATIONS.length ? STATIONS[nozomiEndIdx].id : null;
 
   let throughValue = 0;
   if (nozomiStartId && nozomiEndId) {
@@ -642,7 +643,12 @@ function findCheapestCombination(
   const isAfter2026Apr = date >= new Date(2026, 3, 1);
 
   // 各区間の商品候補を列挙
-  const segmentProducts: { product: string; fare: number; ticketFare?: number; expressFare?: number }[][] = [];
+  const segmentProducts: {
+    product: string;
+    fare: number;
+    ticketFare?: number;
+    expressFare?: number;
+  }[][] = [];
 
   for (const seg of segments) {
     const products = getAvailableProducts(seg, date, excluded, isAfter2026Apr);
@@ -651,10 +657,7 @@ function findCheapestCombination(
   }
 
   // 全組み合わせの中で最安を探す
-  const bestCombination = findMinCombination(
-    segmentProducts,
-    segments,
-  );
+  const bestCombination = findMinCombination(segmentProducts, segments);
 
   if (!bestCombination || bestCombination.total >= throughTotal) {
     return null; // 通しと同額以上なら非表示
@@ -675,14 +678,25 @@ function getAvailableProducts(
   date: Date,
   excluded: boolean,
   isAfter2026Apr: boolean,
-): { product: string; fare: number; ticketFare?: number; expressFare?: number }[] {
+): {
+  product: string;
+  fare: number;
+  ticketFare?: number;
+  expressFare?: number;
+}[] {
   const fareData = getAllFares(seg.fromId, seg.toId);
   if (!fareData) return [];
 
-  const products: { product: string; fare: number; ticketFare?: number; expressFare?: number }[] = [];
-  const seasonalDiff = seg.seatType === "free"
-    ? 0
-    : calculateSeasonalDiffForSide(seg.fromId, seg.toId, date);
+  const products: {
+    product: string;
+    fare: number;
+    ticketFare?: number;
+    expressFare?: number;
+  }[] = [];
+  const seasonalDiff =
+    seg.seatType === "free"
+      ? 0
+      : calculateSeasonalDiffForSide(seg.fromId, seg.toId, date);
 
   // 1. 通常きっぷ（分割）
   const ticketFare = fareData.ticket_fare;
@@ -718,7 +732,10 @@ function getAvailableProducts(
   // 2. 早特商品（乗り継ぎ不可 → 各区間単体判定）
 
   // 早特1（ひかり・こだまの自由席）
-  if (seg.seatType === "free" || (seg.seatType !== "green" && !isNozomiMizuho(seg.trainType))) {
+  if (
+    seg.seatType === "free" ||
+    (seg.seatType !== "green" && !isNozomiMizuho(seg.trainType))
+  ) {
     const h1Base = isAfter2026Apr
       ? fareData.smartex_hayatoku1_2026_apr
       : fareData.smartex_hayatoku1;
@@ -773,8 +790,7 @@ function addHayatoku3Products(
     seg.trainType === "sakura" ||
     seg.trainType === "tsubame"
   ) {
-    const h3g =
-      fareData.smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green;
+    const h3g = fareData.smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green;
     if (h3g !== null) {
       products.push({ product: "早特3 グリーン車", fare: h3g });
     }
@@ -932,7 +948,12 @@ function getTicketProductName(seg: JourneySegment): string {
  * 全組み合わせの最安を探す（再帰的に全探索、最大4区間なので問題なし）
  */
 function findMinCombination(
-  segmentProducts: { product: string; fare: number; ticketFare?: number; expressFare?: number }[][],
+  segmentProducts: {
+    product: string;
+    fare: number;
+    ticketFare?: number;
+    expressFare?: number;
+  }[][],
   segments: JourneySegment[],
 ): { segments: CheapestSegment[]; total: number } | null {
   if (segmentProducts.length === 0) return null;

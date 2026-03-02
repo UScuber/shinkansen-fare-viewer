@@ -27,10 +27,7 @@ function HayatokuSection({ fares }: Props) {
           <h4 className="fare-subgroup__title">早特1</h4>
           <table className="fare-table__table">
             <tbody>
-              <FareRow
-                label="自由席"
-                value={fares.hayatoku1Free}
-              />
+              <FareRow label="自由席" value={fares.hayatoku1Free} />
             </tbody>
           </table>
         </div>

@@ -63,12 +63,12 @@ function renderGroupedOptions(
   currentViaId: string,
 ): React.ReactNode {
   const groups: { id: string; name: string; stations: Station[] }[] = [];
-  let currentGroup: { id: string; name: string; stations: Station[] } | null = null;
+  let currentGroup: { id: string; name: string; stations: Station[] } | null =
+    null;
 
   for (const s of candidates) {
     const lineId = s.line;
-    const lineName =
-      LINE_GROUPS.find((g) => g.id === lineId)?.name ?? lineId;
+    const lineName = LINE_GROUPS.find((g) => g.id === lineId)?.name ?? lineId;
     if (!currentGroup || currentGroup.id !== lineId) {
       currentGroup = { id: lineId, name: lineName, stations: [] };
       groups.push(currentGroup);
@@ -146,7 +146,8 @@ const DetailedSettings: React.FC<Props> = ({
     const newConfigs = segmentConfigs.map((config, i) => {
       if (i >= newSegments.length) return config;
       const seg = newSegments[i];
-      if (config.trainType === null || config.seatType === "free") return config;
+      if (config.trainType === null || config.seatType === "free")
+        return config;
       const available = getAvailableTrainsFiltered(seg.fromId, seg.toId);
       if (!available.includes(config.trainType)) {
         return { ...config, trainType: null };
@@ -220,7 +221,10 @@ const DetailedSettings: React.FC<Props> = ({
                 seatType: "reserved" as SeatType,
                 trainType: null,
               };
-              const availableTrains = getAvailableTrainsFiltered(seg.fromId, seg.toId);
+              const availableTrains = getAvailableTrainsFiltered(
+                seg.fromId,
+                seg.toId,
+              );
               const isFree = config.seatType === "free";
               // 自由席以外で列車が未選択かどうか
               const trainNotSelected = !isFree && config.trainType === null;
@@ -237,9 +241,12 @@ const DetailedSettings: React.FC<Props> = ({
 
               let viaCandidates: Station[] = [];
               if (hasViaAfter) {
-                const prevStation = viaIndex === 0 ? fromId : viaStations[viaIndex - 1];
+                const prevStation =
+                  viaIndex === 0 ? fromId : viaStations[viaIndex - 1];
                 const nextStation =
-                  viaIndex === viaStations.length - 1 ? toId : viaStations[viaIndex + 1];
+                  viaIndex === viaStations.length - 1
+                    ? toId
+                    : viaStations[viaIndex + 1];
                 viaCandidates = getStationsBetween(prevStation, nextStation);
               }
 
@@ -279,7 +286,9 @@ const DetailedSettings: React.FC<Props> = ({
                           }
                           disabled={isFree}
                         >
-                          <option value="" disabled hidden>列車を選択</option>
+                          <option value="" disabled hidden>
+                            列車を選択
+                          </option>
                           {trainStopError && config.trainType && (
                             <option value={config.trainType} disabled>
                               {TRAIN_NAMES[config.trainType]}
@@ -295,7 +304,9 @@ const DetailedSettings: React.FC<Props> = ({
                     </div>
                     {trainStopError && (
                       <p className="segment-config__stop-error">
-                        「{TRAIN_NAMES[config.trainType!]}」は{fromName}または{toName}に停車しません。
+                        「{TRAIN_NAMES[config.trainType!]}」は{fromName}または
+                        {toName}
+                        に停車しません。
                       </p>
                     )}
                   </div>
@@ -309,9 +320,15 @@ const DetailedSettings: React.FC<Props> = ({
                       <select
                         className="form-select--small via-station-row__select"
                         value={viaStations[viaIndex]}
-                        onChange={(e) => handleViaChange(viaIndex, e.target.value)}
+                        onChange={(e) =>
+                          handleViaChange(viaIndex, e.target.value)
+                        }
                       >
-                        {renderGroupedOptions(viaCandidates, viaStations, viaStations[viaIndex])}
+                        {renderGroupedOptions(
+                          viaCandidates,
+                          viaStations,
+                          viaStations[viaIndex],
+                        )}
                       </select>
                       <button
                         className="via-station-row__remove"

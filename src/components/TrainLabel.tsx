@@ -1,19 +1,18 @@
 import React from "react";
-import TrainIcon, { isTrainTag } from "./TrainIcon";
+import TrainIcon from "./TrainIcon";
+import { isTrainTag } from "./trainTagMap";
 
 type TrainLabelProps = {
   label: string;
 };
 
-const TAG_REGEX = /<([^<>]+)>/g;
-
 function TrainLabel({ label }: TrainLabelProps) {
   const parts: React.ReactNode[] = [];
-  TAG_REGEX.lastIndex = 0;
+  const tagRegex = /<([^<>]+)>/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null = null;
 
-  while ((match = TAG_REGEX.exec(label)) !== null) {
+  while ((match = tagRegex.exec(label)) !== null) {
     const matchIndex = match.index;
     if (matchIndex > lastIndex) {
       parts.push(label.slice(lastIndex, matchIndex));

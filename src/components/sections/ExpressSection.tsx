@@ -41,10 +41,7 @@ function ExpressSection({ fares }: Props) {
             label={`${nonNozomiMizuho}グリーン車`}
             value={fares.expressOtherGreen}
           />
-          <FareRow
-            label="自由席"
-            value={fares.expressFree}
-          />
+          <FareRow label="自由席" value={fares.expressFree} />
         </tbody>
       </table>
     </FareSection>

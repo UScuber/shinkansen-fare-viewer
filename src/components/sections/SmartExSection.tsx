@@ -41,10 +41,7 @@ function SmartExSection({ fares }: Props) {
             label={`${nonNozomiMizuho}グリーン車`}
             value={fares.smartexOtherGreen}
           />
-          <FareRow
-            label="自由席"
-            value={fares.smartexFree}
-          />
+          <FareRow label="自由席" value={fares.smartexFree} />
         </tbody>
       </table>
     </FareSection>

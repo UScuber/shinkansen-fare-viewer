@@ -50,7 +50,11 @@ function rangeToSeasons(
 // JSONファイルから読み込んだ繁忙期カレンダー（日付範囲）
 // 通常期以外の日程を定義。未定義日は通常期として扱う。
 const SEASON_RANGES: { start: string; end: string; season: Season }[] =
-  SEASON_RANGES_DATA as { start: string; end: string; season: Season }[];
+  SEASON_RANGES_DATA as {
+    start: string;
+    end: string;
+    season: Season;
+  }[];
 
 // ビルド時に展開（ランタイムでのMap生成）
 let _seasonMap: Map<string, Season> | null = null;

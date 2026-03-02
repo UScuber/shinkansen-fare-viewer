@@ -5,7 +5,10 @@ import DetailedSettings from "./components/DetailedSettings";
 import ViaFareResult from "./components/ViaFareResult";
 import { calculateAllFares } from "./data/calculator";
 import type { CalculatedFares } from "./data/calculator";
-import { calculateViaFare, validateGreenContiguity } from "./data/viaCalculator";
+import {
+  calculateViaFare,
+  validateGreenContiguity,
+} from "./data/viaCalculator";
 import { findStation, getAvailableTrainsFiltered } from "./data/stations";
 import type {
   SeatType,
@@ -116,9 +119,7 @@ function parseInitialParams(): {
   for (let i = 0; i < numSegments; i++) {
     segmentConfigs.push({
       seatType: CODE_TO_SEAT[seatCodes[i]] ?? "reserved",
-      trainType: trainCodes[i]
-        ? (CODE_TO_TRAIN[trainCodes[i]] ?? null)
-        : null,
+      trainType: trainCodes[i] ? (CODE_TO_TRAIN[trainCodes[i]] ?? null) : null,
     });
   }
 
@@ -131,9 +132,7 @@ function App() {
   const [fromId, setFromId] = useState(INITIAL.fromId);
   const [toId, setToId] = useState(INITIAL.toId);
   const [dateStr, setDateStr] = useState(INITIAL.dateStr);
-  const [viaStations, setViaStations] = useState<string[]>(
-    INITIAL.viaStations,
-  );
+  const [viaStations, setViaStations] = useState<string[]>(INITIAL.viaStations);
   const [segmentConfigs, setSegmentConfigs] = useState<SegmentConfig[]>(
     INITIAL.segmentConfigs,
   );
@@ -153,7 +152,8 @@ function App() {
     const allStops = [newFrom, ...newVias, newTo];
     return configs.map((config, i) => {
       if (i >= allStops.length - 1) return config;
-      if (config.trainType === null || config.seatType === "free") return config;
+      if (config.trainType === null || config.seatType === "free")
+        return config;
       const segFrom = allStops[i];
       const segTo = allStops[i + 1];
       if (!segFrom || !segTo) return config;
@@ -181,7 +181,9 @@ function App() {
   const handleFromChange = (newFrom: string) => {
     setFromId(newFrom);
     if (viaStations.length > 0 && newFrom && toId) {
-      setSegmentConfigs(sanitizeConfigs(newFrom, toId, viaStations, segmentConfigs));
+      setSegmentConfigs(
+        sanitizeConfigs(newFrom, toId, viaStations, segmentConfigs),
+      );
     }
   };
 
@@ -189,7 +191,9 @@ function App() {
   const handleToChange = (newTo: string) => {
     setToId(newTo);
     if (viaStations.length > 0 && fromId && newTo) {
-      setSegmentConfigs(sanitizeConfigs(fromId, newTo, viaStations, segmentConfigs));
+      setSegmentConfigs(
+        sanitizeConfigs(fromId, newTo, viaStations, segmentConfigs),
+      );
     }
   };
 
@@ -279,7 +283,15 @@ function App() {
       }
       return { fares: result, viaResult: null, computeError: null };
     }
-  }, [fromId, toId, dateStr, date, viaStations, segmentConfigs, hasViaStations, validationMessage]);
+  }, [
+    fromId,
+    toId,
+    date,
+    viaStations,
+    segmentConfigs,
+    hasViaStations,
+    validationMessage,
+  ]);
 
   // URL同期
   useEffect(() => {

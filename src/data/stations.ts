@@ -118,12 +118,8 @@ export function areStationsInOrder(stationIds: string[]): boolean {
   if (stationIds.length <= 1) return true;
   const indices = stationIds.map(getStationIndex);
   if (indices.some((i) => i === -1)) return false;
-  const ascending = indices.every(
-    (val, i) => i === 0 || val > indices[i - 1],
-  );
-  const descending = indices.every(
-    (val, i) => i === 0 || val < indices[i - 1],
-  );
+  const ascending = indices.every((val, i) => i === 0 || val > indices[i - 1]);
+  const descending = indices.every((val, i) => i === 0 || val < indices[i - 1]);
   return ascending || descending;
 }
 
@@ -143,10 +139,7 @@ export function isHakataBetween(fromId: string, toId: string): boolean {
  * 2駅間の駅リストを返す（経由駅候補用）
  * 両端を含まず、常に地理的順序で返す
  */
-export function getStationsBetween(
-  fromId: string,
-  toId: string,
-): Station[] {
+export function getStationsBetween(fromId: string, toId: string): Station[] {
   const fromIdx = getStationIndex(fromId);
   const toIdx = getStationIndex(toId);
   if (fromIdx === -1 || toIdx === -1) return [];
@@ -167,10 +160,7 @@ import type { TrainType } from "./types";
  * - 東海道＋山陽またぎ（新大阪より東京側 ↔ 新大阪より博多側）: のぞみ、ひかり、こだま
  * - 山陽＋九州またぎ: みずほ、さくら
  */
-export function getAvailableTrains(
-  fromId: string,
-  toId: string,
-): TrainType[] {
+export function getAvailableTrains(fromId: string, toId: string): TrainType[] {
   const fromIdx = getStationIndex(fromId);
   const toIdx = getStationIndex(toId);
   if (fromIdx === -1 || toIdx === -1) return [];
@@ -236,17 +226,29 @@ export function getAvailableTrainsFiltered(
  */
 const TRAIN_STOPS: Record<TrainType, Set<string>> = {
   nozomi: new Set([
-    "tokyo", "shinagawa", "shinyokohama", "nagoya", "kyoto", "shinosaka",
-    "shinkobe", "okayama", "hiroshima", "kokura", "hakata",
-    "nishiakashi", "himeji", "fukuyama", "tokuyama", "shinyamaguchi",
+    "tokyo",
+    "shinagawa",
+    "shinyokohama",
+    "nagoya",
+    "kyoto",
+    "shinosaka",
+    "shinkobe",
+    "okayama",
+    "hiroshima",
+    "kokura",
+    "hakata",
+    "nishiakashi",
+    "himeji",
+    "fukuyama",
+    "tokuyama",
+    "shinyamaguchi",
   ]),
   hikari: new Set(
     // 東京〜博多の全駅から新富士・三河安城・厚狭を除く
-    STATIONS
-      .filter((s) => {
-        const idx = STATIONS.indexOf(s);
-        return idx <= HAKATA_INDEX;
-      })
+    STATIONS.filter((s) => {
+      const idx = STATIONS.indexOf(s);
+      return idx <= HAKATA_INDEX;
+    })
       .map((s) => s.id)
       .filter((id) => !["shinfuji", "mikawaanjo", "asa"].includes(id)),
   ),
@@ -255,30 +257,50 @@ const TRAIN_STOPS: Record<TrainType, Set<string>> = {
     STATIONS.filter((_, idx) => idx <= HAKATA_INDEX).map((s) => s.id),
   ),
   mizuho: new Set([
-    "shinosaka", "shinkobe", "himeji", "okayama", "fukuyama", "hiroshima",
-    "shinyamaguchi", "kokura", "hakata", "kumamoto", "sendai", "kagoshimachuo",
+    "shinosaka",
+    "shinkobe",
+    "himeji",
+    "okayama",
+    "fukuyama",
+    "hiroshima",
+    "shinyamaguchi",
+    "kokura",
+    "hakata",
+    "kumamoto",
+    "sendai",
+    "kagoshimachuo",
   ]),
   sakura: new Set([
     // 山陽区間の停車駅
-    "shinosaka", "shinkobe", "nishiakashi", "himeji", "okayama", "fukuyama",
-    "hiroshima", "tokuyama", "shinyamaguchi", "shinshimonoseki", "kokura",
+    "shinosaka",
+    "shinkobe",
+    "nishiakashi",
+    "himeji",
+    "okayama",
+    "fukuyama",
+    "hiroshima",
+    "tokuyama",
+    "shinyamaguchi",
+    "shinshimonoseki",
+    "kokura",
     // 博多〜鹿児島中央の全駅
-    ...STATIONS
-      .filter((_, idx) => idx >= HAKATA_INDEX)
-      .map((s) => s.id),
+    ...STATIONS.filter((_, idx) => idx >= HAKATA_INDEX).map((s) => s.id),
   ]),
   tsubame: new Set(
     // 新下関〜鹿児島中央の全駅
-    STATIONS
-      .filter((_, idx) => idx >= STATIONS.findIndex((s) => s.id === "shinshimonoseki"))
-      .map((s) => s.id),
+    STATIONS.filter(
+      (_, idx) => idx >= STATIONS.findIndex((s) => s.id === "shinshimonoseki"),
+    ).map((s) => s.id),
   ),
 };
 
 /**
  * 指定した列車が指定した駅に停車するか判定
  */
-export function doesTrainStopAt(trainType: TrainType, stationId: string): boolean {
+export function doesTrainStopAt(
+  trainType: TrainType,
+  stationId: string,
+): boolean {
   return TRAIN_STOPS[trainType]?.has(stationId) ?? false;
 }
 

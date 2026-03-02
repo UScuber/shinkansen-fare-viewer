@@ -18,10 +18,7 @@ function TicketSection({ fares }: Props) {
         </thead>
         <tbody>
           <FareRow label="距離" value={fares.distance} note="km" />
-          <FareRow
-            label="乗車券運賃"
-            value={fares.ticketFare}
-          />
+          <FareRow label="乗車券運賃" value={fares.ticketFare} />
           <FareRow
             label="学割運賃"
             value={fares.studentFare}

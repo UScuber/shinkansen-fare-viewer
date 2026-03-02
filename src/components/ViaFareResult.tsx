@@ -245,12 +245,13 @@ function CheapestSection({
             </div>
             <div className="via-result__cheapest-fare">
               {formatYen(seg.fare)}
-              {seg.ticketFare !== undefined && seg.expressFare !== undefined && (
-                <span className="via-result__note">
-                  （乗車券 {formatYen(seg.ticketFare)} + 特急券{" "}
-                  {formatYen(seg.expressFare)}）
-                </span>
-              )}
+              {seg.ticketFare !== undefined &&
+                seg.expressFare !== undefined && (
+                  <span className="via-result__note">
+                    （乗車券 {formatYen(seg.ticketFare)} + 特急券{" "}
+                    {formatYen(seg.expressFare)}）
+                  </span>
+                )}
             </div>
           </div>
         ))}
