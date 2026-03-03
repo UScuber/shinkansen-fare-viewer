@@ -6,9 +6,11 @@ interface SearchFormProps {
   fromId: string;
   toId: string;
   dateStr: string;
+  useGakuwari: boolean;
   onFromChange: (id: string) => void;
   onToChange: (id: string) => void;
   onDateChange: (date: string) => void;
+  onGakuwariChange: (checked: boolean) => void;
   onSwap: () => void;
   children?: React.ReactNode;
 }
@@ -17,9 +19,11 @@ const SearchForm: React.FC<SearchFormProps> = ({
   fromId,
   toId,
   dateStr,
+  useGakuwari,
   onFromChange,
   onToChange,
   onDateChange,
+  onGakuwariChange,
   onSwap,
   children,
 }) => {
@@ -64,6 +68,17 @@ const SearchForm: React.FC<SearchFormProps> = ({
             {selectedDate && <SeasonBadge date={selectedDate} />}
           </div>
         </div>
+      </div>
+
+      <div className="search-form__gakuwari">
+        <label className="gakuwari-label">
+          <input
+            type="checkbox"
+            checked={useGakuwari}
+            onChange={(e) => onGakuwariChange(e.target.checked)}
+          />
+          <span>学割を適用する</span>
+        </label>
       </div>
 
       {children}

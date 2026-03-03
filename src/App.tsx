@@ -74,6 +74,7 @@ function updateQueryParams(
   dateStr: string,
   viaStations: string[],
   segmentConfigs: SegmentConfig[],
+  useGakuwari: boolean,
 ): void {
   const params = new URLSearchParams();
   if (fromId) params.set("from", fromId);
@@ -103,6 +104,9 @@ function updateQueryParams(
       }
     }
   }
+  if (useGakuwari) {
+    params.set("gaku", "1");
+  }
   const query = params.toString();
   const nextUrl = query
     ? `${window.location.pathname}?${query}`
@@ -117,11 +121,13 @@ function parseInitialParams(): {
   dateStr: string;
   viaStations: string[];
   segmentConfigs: SegmentConfig[];
+  useGakuwari: boolean;
 } {
   const params = new URLSearchParams(window.location.search);
   const fromId = params.get("from") ?? "";
   const toId = params.get("to") ?? "";
   const dateStr = normalizeDateStr(params.get("date"));
+  const useGakuwari = params.get("gaku") === "1";
 
   const viaStr = params.get("via") ?? "";
   const viaStations = viaStr ? viaStr.split(",").filter(Boolean) : [];
@@ -143,7 +149,7 @@ function parseInitialParams(): {
           : null,
       });
     }
-    return { fromId, toId, dateStr, viaStations, segmentConfigs };
+    return { fromId, toId, dateStr, viaStations, segmentConfigs, useGakuwari };
   }
 
   // フィルタモード: sまたはtパラメータがあればフィルタを復元
@@ -163,6 +169,7 @@ function parseInitialParams(): {
       dateStr,
       viaStations: [],
       segmentConfigs: [{ seatType, trainType }],
+      useGakuwari,
     };
   }
 
@@ -172,6 +179,7 @@ function parseInitialParams(): {
     dateStr,
     viaStations: [],
     segmentConfigs: [{ seatType: null, trainType: null }],
+    useGakuwari,
   };
 }
 
@@ -185,6 +193,7 @@ function App() {
   const [segmentConfigs, setSegmentConfigs] = useState<SegmentConfig[]>(
     INITIAL.segmentConfigs,
   );
+  const [useGakuwari, setUseGakuwari] = useState(INITIAL.useGakuwari);
 
   const hasViaStations = viaStations.length > 0;
 
@@ -389,8 +398,15 @@ function App() {
 
   // URL同期
   useEffect(() => {
-    updateQueryParams(fromId, toId, dateStr, viaStations, segmentConfigs);
-  }, [fromId, toId, dateStr, viaStations, segmentConfigs]);
+    updateQueryParams(
+      fromId,
+      toId,
+      dateStr,
+      viaStations,
+      segmentConfigs,
+      useGakuwari,
+    );
+  }, [fromId, toId, dateStr, viaStations, segmentConfigs, useGakuwari]);
 
   const fromStation = findStation(fromId);
   const toStation = findStation(toId);
@@ -408,9 +424,11 @@ function App() {
             fromId={fromId}
             toId={toId}
             dateStr={dateStr}
+            useGakuwari={useGakuwari}
             onFromChange={handleFromChange}
             onToChange={handleToChange}
             onDateChange={setDateStr}
+            onGakuwariChange={setUseGakuwari}
             onSwap={handleSwap}
           >
             <DetailedSettings
@@ -451,7 +469,12 @@ function App() {
                 <span>{dateStr}</span>
               </div>
             </div>
-            <FareTable fares={fares} date={date} filter={fareFilter} />
+            <FareTable
+              fares={fares}
+              date={date}
+              filter={fareFilter}
+              useGakuwari={useGakuwari}
+            />
             {splitResult && <SplitFareResult result={splitResult} />}
           </section>
         )}

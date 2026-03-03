@@ -166,6 +166,12 @@ export type CalculatedFares = {
   studentFareApplicable: boolean;
   platKodamaPriceClass: PlatKodamaPriceClass | null;
 
+  // 特急料金の内訳用データ（生値）
+  hikariReservedBase: number | null;
+  nozomiAdditional: number | null;
+  greenCharge: number | null;
+  seasonalDiff: number;
+
   // 特急券（季節加算済み）
   expressNozomiMizuhoReserved: number | null;
   expressOtherReserved: number | null;
@@ -311,6 +317,10 @@ export function calculateAllFares(
     studentFare,
     studentFareApplicable,
     platKodamaPriceClass,
+    hikariReservedBase: fareData.hikari_reserved,
+    nozomiAdditional: fareData.nozomi_additional,
+    greenCharge: fareData.green_charge,
+    seasonalDiff,
     expressNozomiMizuhoReserved,
     expressOtherReserved,
     expressNozomiMizuhoGreen,

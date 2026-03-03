@@ -4,9 +4,10 @@ import type { CalculatedFares } from "../../data/calculator";
 
 type Props = {
   fares: CalculatedFares;
+  useGakuwari?: boolean;
 };
 
-function TicketSection({ fares }: Props) {
+function TicketSection({ fares, useGakuwari = false }: Props) {
   return (
     <FareSection title="乗車券">
       <table className="fare-table__table">
@@ -23,9 +24,11 @@ function TicketSection({ fares }: Props) {
             label="学割運賃"
             value={fares.studentFare}
             note={
-              fares.studentFareApplicable
-                ? undefined
-                : "101km未満のため通常運賃と同額"
+              useGakuwari && fares.studentFareApplicable
+                ? "学割適用中"
+                : fares.studentFareApplicable
+                  ? undefined
+                  : "101km未満のため通常運賃と同額"
             }
           />
         </tbody>
