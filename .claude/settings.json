@@ -8,7 +8,7 @@
       "Bash(npm run lint-staged)",
       "Bash(git add *)",
       "Bash(npx prettier *)",
-      "Bash(npx tsc -b *)"
+      "Bash(npx tsc *)"
     ]
   }
 }
