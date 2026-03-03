@@ -431,6 +431,12 @@
   gap: 2px;
 }
 
+.normal-total__breakdown {
+  color: #546e7a;
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+}
+
 .normal-total__component {
   color: #546e7a;
 }
@@ -445,8 +451,11 @@
 .normal-total__total {
   font-weight: 700;
   color: #1a237e;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .normal-total__gakuwari-badge {
@@ -768,8 +777,8 @@
   font-size: 0.78rem;
   color: #78909c;
   font-weight: 400;
-  display: inline;
-  margin-left: 4px;
+  display: block;
+  margin-top: 2px;
 }
 
 .via-result__side {
@@ -859,11 +868,19 @@
 }
 
 .via-result__cheapest-fare {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1a237e;
-  text-align: right;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 4px;
+}
+
+.via-result__fare-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a237e;
+  font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
+  white-space: nowrap;
 }
 
 /* ===== Split Fare Result ===== */
@@ -936,11 +953,19 @@
 }
 
 .split-result__segment-fare {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1a237e;
-  text-align: right;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 4px;
+}
+
+.split-result__fare-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a237e;
+  font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
+  white-space: nowrap;
 }
 
 .split-result__note {

@@ -1,14 +1,17 @@
 import React from "react";
-import { findStation } from "../data/stations";
+import { findStation, isNozomiMizuho } from "../data/stations";
 import type {
   ViaFareResult as ViaFareResultType,
   ThroughFareResult,
   SideBreakdown,
   CheapestCombinationResult,
+  JourneySegment,
 } from "../data/types";
 
 type Props = {
   result: ViaFareResultType;
+  useGakuwari: boolean;
+  segments: JourneySegment[];
 };
 
 function formatYen(value: number | null): string {
@@ -20,8 +23,33 @@ function stationName(id: string): string {
   return findStation(id)?.name ?? id;
 }
 
-function ThroughSection({ through }: { through: ThroughFareResult }) {
+/**
+ * 指定された列車にのぞみ/みずほが含まれているか判定
+ */
+function hasNozomiMizuhoInSegments(segments: JourneySegment[]): boolean {
+  return segments.some(
+    (s) => isNozomiMizuho(s.trainType) && s.seatType !== "free",
+  );
+}
+
+function ThroughSection({
+  through,
+  useGakuwari,
+  segments,
+}: {
+  through: ThroughFareResult;
+  useGakuwari: boolean;
+  segments: JourneySegment[];
+}) {
   const { breakdown } = through;
+  const ticketFare = useGakuwari ? through.studentFare : through.ticketFare;
+
+  // 列車が指定されているので、のぞみ/みずほを使うかどうかで適切な特急料金を選択
+  const usesNozomi = hasNozomiMizuhoInSegments(segments);
+  const expressFare =
+    usesNozomi && through.expressFareNozomi !== null
+      ? through.expressFareNozomi
+      : through.expressFareOther;
 
   return (
     <div className="via-result__section">
@@ -37,19 +65,15 @@ function ThroughSection({ through }: { through: ThroughFareResult }) {
               <td>{through.distance} km</td>
             </tr>
             <tr>
-              <td>乗車券運賃</td>
-              <td>{formatYen(through.ticketFare)}</td>
-            </tr>
-            <tr>
-              <td>学割運賃</td>
               <td>
-                {formatYen(through.studentFare)}
-                {!through.studentFareApplicable && (
+                {useGakuwari ? "学割運賃" : "乗車券運賃"}
+                {useGakuwari && !through.studentFareApplicable && (
                   <span className="via-result__note">
                     （101km未満のため通常運賃と同額）
                   </span>
                 )}
               </td>
+              <td>{formatYen(ticketFare)}</td>
             </tr>
           </tbody>
         </table>
@@ -72,22 +96,10 @@ function ThroughSection({ through }: { through: ThroughFareResult }) {
         {/* 合計特急料金 */}
         <table className="via-result__table via-result__table--total">
           <tbody>
-            {through.expressFareNozomi !== null && (
-              <tr>
-                <td>のぞみ/みずほ利用時 特急料金</td>
-                <td className="via-result__total-value">
-                  {formatYen(through.expressFareNozomi)}
-                </td>
-              </tr>
-            )}
             <tr>
-              <td>
-                {through.expressFareNozomi !== null
-                  ? "のぞみ/みずほ以外 特急料金"
-                  : "特急料金"}
-              </td>
+              <td>特急料金</td>
               <td className="via-result__total-value">
-                {formatYen(through.expressFareOther)}
+                {formatYen(expressFare)}
               </td>
             </tr>
           </tbody>
@@ -96,22 +108,10 @@ function ThroughSection({ through }: { through: ThroughFareResult }) {
 
       {/* 合計 */}
       <div className="via-result__total-section">
-        {through.expressFareNozomi !== null && (
-          <div className="via-result__grand-total">
-            <span>合計（のぞみ/みずほ利用時）</span>
-            <span className="via-result__grand-total-value">
-              {formatYen(through.ticketFare + through.expressFareNozomi)}
-            </span>
-          </div>
-        )}
         <div className="via-result__grand-total">
-          <span>
-            {through.expressFareNozomi !== null
-              ? "合計（のぞみ/みずほ以外）"
-              : "合計"}
-          </span>
+          <span>合計</span>
           <span className="via-result__grand-total-value">
-            {formatYen(through.ticketFare + through.expressFareOther)}
+            {formatYen(ticketFare + expressFare)}
           </span>
         </div>
       </div>
@@ -244,14 +244,16 @@ function CheapestSection({
               {seg.productName}
             </div>
             <div className="via-result__cheapest-fare">
-              {formatYen(seg.fare)}
               {seg.ticketFare !== undefined &&
                 seg.expressFare !== undefined && (
                   <span className="via-result__note">
-                    （乗車券 {formatYen(seg.ticketFare)} + 特急券{" "}
-                    {formatYen(seg.expressFare)}）
+                    乗車券 {formatYen(seg.ticketFare)} + 特急券{" "}
+                    {formatYen(seg.expressFare)}
                   </span>
                 )}
+              <span className="via-result__fare-value">
+                {formatYen(seg.fare)}
+              </span>
             </div>
           </div>
         ))}
@@ -267,10 +269,14 @@ function CheapestSection({
   );
 }
 
-const ViaFareResult: React.FC<Props> = ({ result }) => {
+const ViaFareResult: React.FC<Props> = ({ result, useGakuwari, segments }) => {
   return (
     <div className="via-result">
-      <ThroughSection through={result.through} />
+      <ThroughSection
+        through={result.through}
+        useGakuwari={useGakuwari}
+        segments={segments}
+      />
       {result.cheapest && <CheapestSection cheapest={result.cheapest} />}
     </div>
   );

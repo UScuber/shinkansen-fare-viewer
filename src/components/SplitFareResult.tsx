@@ -35,7 +35,9 @@ function FreeSeatSplitSection({ split }: { split: FreeSeatSplitResult }) {
             通し）
           </div>
           <div className="split-result__segment-fare">
-            {formatYen(split.throughTicketFare)}
+            <span className="split-result__fare-value">
+              {formatYen(split.throughTicketFare)}
+            </span>
           </div>
         </div>
         {split.expressSegments.map((seg, i) => (
@@ -69,7 +71,9 @@ function MixedGroupItem({ group }: { group: MixedSplitGroup }) {
         </div>
         <div className="split-result__segment-product">{group.productName}</div>
         <div className="split-result__segment-fare">
-          {formatYen(group.fare)}
+          <span className="split-result__fare-value">
+            {formatYen(group.fare)}
+          </span>
         </div>
       </div>
     );

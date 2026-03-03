@@ -2,7 +2,7 @@ import FareSection from "../FareSection";
 import TrainLabel from "../TrainLabel";
 import type { CalculatedFares } from "../../data/calculator";
 import type { FareFilter } from "../../data/types";
-import { isProductVisible } from "../../data/fareFilter";
+import { isProductVisible, type ProductId } from "../../data/fareFilter";
 import { TRAIN_TAGS } from "../../data/trainTags";
 
 type Props = {
@@ -30,7 +30,7 @@ function NormalTicketTotalSection({ fares, useGakuwari, filter }: Props) {
     key: string;
     label: string;
     expressFare: number | null;
-    productId: string;
+    productId: ProductId;
     extraCheck?: boolean;
   };
 
@@ -90,14 +90,12 @@ function NormalTicketTotalSection({ fares, useGakuwari, filter }: Props) {
                 【<TrainLabel label={row.label} />】
               </div>
               <div className="normal-total__calc">
-                <span className="normal-total__component">
+                <span className="normal-total__breakdown">
                   乗車券 {formatYen(ticketFare)}
                   {useGakuwari && (
                     <span className="normal-total__gakuwari-badge">学割</span>
                   )}
-                </span>
-                <span className="normal-total__plus"> + </span>
-                <span className="normal-total__component">
+                  {" + "}
                   {row.key === "free"
                     ? "自由席特急券"
                     : row.key.includes("Green")
@@ -105,7 +103,6 @@ function NormalTicketTotalSection({ fares, useGakuwari, filter }: Props) {
                       : "指定席特急券"}{" "}
                   {formatYen(row.expressFare)}
                 </span>
-                <span className="normal-total__eq"> = </span>
                 <span className="normal-total__total">{formatYen(total)}</span>
               </div>
             </div>

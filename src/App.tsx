@@ -498,7 +498,20 @@ function App() {
                 <span>{dateStr}</span>
               </div>
             </div>
-            <ViaFareResult result={viaResult} />
+            <ViaFareResult
+              result={viaResult}
+              useGakuwari={useGakuwari}
+              segments={(() => {
+                const allStops = [fromId, ...viaStations, toId];
+                return allStops.slice(0, -1).map((_, i) => ({
+                  fromId: allStops[i],
+                  toId: allStops[i + 1],
+                  seatType:
+                    segmentConfigs[i]?.seatType ?? ("reserved" as const),
+                  trainType: segmentConfigs[i]?.trainType ?? null,
+                }));
+              })()}
+            />
           </section>
         )}
       </main>

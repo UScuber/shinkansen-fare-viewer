@@ -19,18 +19,19 @@ function TicketSection({ fares, useGakuwari = false }: Props) {
         </thead>
         <tbody>
           <FareRow label="距離" value={fares.distance} note="km" />
-          <FareRow label="乗車券運賃" value={fares.ticketFare} />
-          <FareRow
-            label="学割運賃"
-            value={fares.studentFare}
-            note={
-              useGakuwari && fares.studentFareApplicable
-                ? "学割適用中"
-                : fares.studentFareApplicable
-                  ? undefined
+          {useGakuwari ? (
+            <FareRow
+              label="学割運賃"
+              value={fares.studentFare}
+              note={
+                fares.studentFareApplicable
+                  ? "学割適用中"
                   : "101km未満のため通常運賃と同額"
-            }
-          />
+              }
+            />
+          ) : (
+            <FareRow label="乗車券運賃" value={fares.ticketFare} />
+          )}
         </tbody>
       </table>
     </FareSection>
