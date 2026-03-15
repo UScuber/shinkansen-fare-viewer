@@ -1,6 +1,6 @@
 import { stationName } from "../../data/Route";
 import { Route } from "../../data/Route";
-import { doesTrainStopAt } from "../../data/stations";
+import { doesTrainStopAt, type StationId } from "../../data/stations";
 import type { Station } from "../../data/stations";
 import type { TrainType, SegmentConfig } from "../../data/types";
 
@@ -54,8 +54,8 @@ function SegmentConfigRow({
   const trainStopError =
     !isFree &&
     config.trainType !== null &&
-    (!doesTrainStopAt(config.trainType, seg.fromId) ||
-      !doesTrainStopAt(config.trainType, seg.toId));
+    (!doesTrainStopAt(config.trainType, seg.fromId as StationId) ||
+      !doesTrainStopAt(config.trainType, seg.toId as StationId));
 
   return (
     <>

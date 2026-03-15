@@ -2,6 +2,8 @@
  * 乗り継ぎ駅・列車指定機能の共通型定義
  */
 
+import type { StationId } from "./stations";
+
 /** 座席種別 */
 export type SeatType = "reserved" | "green" | "free";
 
@@ -16,8 +18,8 @@ export type TrainType =
 
 /** 区間情報（ユーザー入力） */
 export type JourneySegment = {
-  fromId: string;
-  toId: string;
+  fromId: StationId;
+  toId: StationId;
   seatType: SeatType;
   /** null = 未指定 → のぞみ/それ以外の両方を表示 */
   trainType: TrainType | null;
@@ -41,8 +43,8 @@ export type NozomiSurchargeMethod = "individual_sum" | "through";
 
 /** サイドごとの内訳 */
 export type SideBreakdown = {
-  fromId: string;
-  toId: string;
+  fromId: StationId;
+  toId: StationId;
   /** ベース特急料金（hikari_reserved通し or free） */
   baseFare: number;
   /** 季節加算額 */
@@ -65,8 +67,8 @@ export type SideBreakdown = {
 
 /** 区間ごとの詳細情報 */
 export type SegmentDetail = {
-  fromId: string;
-  toId: string;
+  fromId: StationId;
+  toId: StationId;
   seatType: SeatType;
   trainType: TrainType | null;
   /** この区間のnozomi_additional値 */
@@ -103,8 +105,8 @@ export type ThroughFareResult = {
 
 /** 最安組み合わせの区間ごとの結果 */
 export type CheapestSegment = {
-  fromId: string;
-  toId: string;
+  fromId: StationId;
+  toId: StationId;
   /** 商品名（例: "通常きっぷ", "早特7", "ぷらっとこだま A料金"） */
   productName: string;
   /** 料金 */

@@ -9,6 +9,7 @@ import {
   findStation,
   doesTrainStopAt,
   type Station,
+  type StationId,
 } from "./stations";
 import { getAllFares, type AllFaresEntry } from "./allFares";
 import type { TrainType } from "./types";
@@ -54,12 +55,12 @@ export class Route {
   /** 地理的に大きい方のインデックス */
   readonly hi: number;
 
-  readonly fromId: string;
-  readonly toId: string;
+  readonly fromId: StationId;
+  readonly toId: StationId;
 
   constructor(fromId: string, toId: string) {
-    this.fromId = fromId;
-    this.toId = toId;
+    this.fromId = fromId as StationId;
+    this.toId = toId as StationId;
     this.fromIdx = getStationIndex(fromId);
     this.toIdx = getStationIndex(toId);
     this.lo = Math.min(this.fromIdx, this.toIdx);

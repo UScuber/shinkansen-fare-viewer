@@ -3,11 +3,12 @@
  * fares.jsonから全項目を読み込み
  */
 
+import type { StationId } from "./stations";
 import FARES_DATA from "./fares.json";
 
 export type AllFaresEntry = {
-  start: string;
-  end: string;
+  start: StationId;
+  end: StationId;
   hikari_reserved: number | null;
   green: number | null;
   green_charge: number | null;
@@ -41,7 +42,7 @@ export type AllFaresEntry = {
 // JSONデータをMapに変換（双方向）
 const fareMap = new Map<string, AllFaresEntry>();
 
-(FARES_DATA as AllFaresEntry[]).forEach((entry) => {
+(FARES_DATA as unknown as AllFaresEntry[]).forEach((entry) => {
   const key1 = `${entry.start}_${entry.end}`;
   const key2 = `${entry.end}_${entry.start}`;
   fareMap.set(key1, entry);
@@ -53,7 +54,10 @@ const fareMap = new Map<string, AllFaresEntry>();
  * @param from 出発駅ID
  * @param to 到着駅ID
  */
-export function getAllFares(from: string, to: string): AllFaresEntry | null {
+export function getAllFares(
+  from: StationId,
+  to: StationId,
+): AllFaresEntry | null {
   const key = `${from}_${to}`;
   return fareMap.get(key) || null;
 }

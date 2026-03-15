@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import type { Station } from "../data/stations";
+import { toStationId, type Station } from "../data/stations";
 import { Route } from "../data/Route";
 import { validateGreenContiguity } from "../data/viaCalculator";
 import SegmentConfigRow from "./ui/SegmentConfigRow";
@@ -36,7 +36,10 @@ function buildSegments(
   const allStops = [fromId, ...viaStations, toId];
   const segments: { fromId: string; toId: string }[] = [];
   for (let i = 0; i < allStops.length - 1; i++) {
-    segments.push({ fromId: allStops[i], toId: allStops[i + 1] });
+    segments.push({
+      fromId: allStops[i],
+      toId: allStops[i + 1],
+    });
   }
   return segments;
 }
@@ -169,7 +172,8 @@ function DetailedSettings({
 
   // グリーン車の連続性チェック
   const journeySegments: JourneySegment[] = segments.map((seg, i) => ({
-    ...seg,
+    fromId: toStationId(seg.fromId)!,
+    toId: toStationId(seg.toId)!,
     seatType: segmentConfigs[i]?.seatType ?? "reserved",
     trainType: segmentConfigs[i]?.trainType ?? null,
   }));

@@ -5,6 +5,7 @@
 import { getSeason, SEASON_DIFF } from "./calendar";
 import { getAllFares } from "./allFares";
 import { Route } from "./Route";
+import type { StationId } from "./stations";
 import platKodamaConfig from "./plat_kodama_config.json";
 
 export type PassengerType = "adult" | "child";
@@ -55,8 +56,8 @@ export function calculateStudentFare(
 }
 
 export function calculateSeasonalDiff(
-  fromId: string,
-  toId: string,
+  fromId: StationId,
+  toId: StationId,
   date: Date,
 ): number {
   const season = getSeason(date);
@@ -183,8 +184,8 @@ export type CalculatedFares = {
  * シーズンによる金額調整、学割計算、特急券計算などをすべて実施
  */
 export function calculateAllFares(
-  fromId: string,
-  toId: string,
+  fromId: StationId,
+  toId: StationId,
   date: Date,
 ): CalculatedFares | null {
   const fareData = getAllFares(fromId, toId);
