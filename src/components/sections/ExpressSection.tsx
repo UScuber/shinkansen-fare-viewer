@@ -1,9 +1,7 @@
-import FareSection from "../FareSection";
-import FareRow from "../FareRow";
+import FareListSection, { type FareRowDef } from "./FareListSection";
+import { NOZOMI_MIZUHO, NON_NOZOMI_MIZUHO } from "../ui/trainLabels";
 import type { CalculatedFares } from "../../data/calculator";
 import type { FareFilter } from "../../data/types";
-import { isProductVisible } from "../../data/fareFilter";
-import { TRAIN_TAGS } from "../../data/trainTags";
 
 type Props = {
   fares: CalculatedFares;
@@ -11,69 +9,37 @@ type Props = {
 };
 
 function ExpressSection({ fares, filter }: Props) {
-  const nozomiMizuho = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}`;
-  const nonNozomiMizuho = `${TRAIN_TAGS.kodama}${TRAIN_TAGS.hikari}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
+  const rows: FareRowDef[] = [
+    {
+      label: `${NOZOMI_MIZUHO}普通車`,
+      value: fares.expressNozomiMizuhoReserved,
+      productId: "expressNozomiMizuhoReserved",
+      extraCheck: fares.expressNozomiMizuhoReserved !== null,
+    },
+    {
+      label: `${NON_NOZOMI_MIZUHO}普通車`,
+      value: fares.expressOtherReserved,
+      productId: "expressOtherReserved",
+    },
+    {
+      label: `${NOZOMI_MIZUHO}グリーン車`,
+      value: fares.expressNozomiMizuhoGreen,
+      productId: "expressNozomiMizuhoGreen",
+      extraCheck: fares.expressNozomiMizuhoGreen !== null,
+    },
+    {
+      label: `${NON_NOZOMI_MIZUHO}グリーン車`,
+      value: fares.expressOtherGreen,
+      productId: "expressOtherGreen",
+    },
+    {
+      label: "自由席",
+      value: fares.expressFree,
+      productId: "expressFree",
+    },
+  ];
 
-  const f = filter ?? null;
-  const showNozomiReserved =
-    fares.expressNozomiMizuhoReserved !== null &&
-    isProductVisible("expressNozomiMizuhoReserved", f);
-  const showOtherReserved = isProductVisible("expressOtherReserved", f);
-  const showNozomiGreen =
-    fares.expressNozomiMizuhoGreen !== null &&
-    isProductVisible("expressNozomiMizuhoGreen", f);
-  const showOtherGreen = isProductVisible("expressOtherGreen", f);
-  const showFree = isProductVisible("expressFree", f);
-
-  if (
-    !showNozomiReserved &&
-    !showOtherReserved &&
-    !showNozomiGreen &&
-    !showOtherGreen &&
-    !showFree
-  ) {
-    return null;
-  }
-
-  return (
-    <FareSection title="特急券">
-      <table className="fare-table__table">
-        <thead>
-          <tr>
-            <th>項目</th>
-            <th>料金</th>
-          </tr>
-        </thead>
-        <tbody>
-          {showNozomiReserved && (
-            <FareRow
-              label={`${nozomiMizuho}普通車`}
-              value={fares.expressNozomiMizuhoReserved}
-            />
-          )}
-          {showOtherReserved && (
-            <FareRow
-              label={`${nonNozomiMizuho}普通車`}
-              value={fares.expressOtherReserved}
-            />
-          )}
-          {showNozomiGreen && (
-            <FareRow
-              label={`${nozomiMizuho}グリーン車`}
-              value={fares.expressNozomiMizuhoGreen}
-            />
-          )}
-          {showOtherGreen && (
-            <FareRow
-              label={`${nonNozomiMizuho}グリーン車`}
-              value={fares.expressOtherGreen}
-            />
-          )}
-          {showFree && <FareRow label="自由席" value={fares.expressFree} />}
-        </tbody>
-      </table>
-    </FareSection>
-  );
+  return <FareListSection title="特急券" rows={rows} filter={filter} />;
 }
 
 export default ExpressSection;

@@ -1,4 +1,3 @@
-import React from "react";
 import { STATIONS } from "../data/stations";
 
 type Props = {
@@ -8,12 +7,7 @@ type Props = {
   exclude?: string;
 };
 
-const StationSelect: React.FC<Props> = ({
-  label,
-  value,
-  onChange,
-  exclude,
-}) => {
+function StationSelect({ label, value, onChange, exclude }: Props) {
   const lines = [
     { id: "tokaido", name: "東海道新幹線" },
     { id: "sanyo", name: "山陽新幹線" },
@@ -43,6 +37,6 @@ const StationSelect: React.FC<Props> = ({
       </select>
     </div>
   );
-};
+}
 
 export default StationSelect;

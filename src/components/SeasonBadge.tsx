@@ -1,4 +1,3 @@
-import React from "react";
 import { getSeason, SEASON_DIFF } from "../data/calendar";
 
 type Props = {
@@ -12,7 +11,7 @@ const seasonLabels: Record<string, { label: string; color: string }> = {
   off: { label: "閑散期 (-200円)", color: "#38a169" },
 };
 
-const SeasonBadge: React.FC<Props> = ({ date }) => {
+function SeasonBadge({ date }: Props) {
   const season = getSeason(date);
   const info = seasonLabels[season];
   return (
@@ -24,6 +23,6 @@ const SeasonBadge: React.FC<Props> = ({ date }) => {
       {info.label}
     </span>
   );
-};
+}
 
 export default SeasonBadge;

@@ -12,13 +12,8 @@ import {
   getPlatKodamaPriceClass,
 } from "./calculator";
 import { getSeason, SEASON_DIFF } from "./calendar";
-import {
-  STATIONS,
-  findStation,
-  getStationIndex,
-  isHakataBetween,
-  isNozomiMizuho,
-} from "./stations";
+import { Route } from "./Route";
+import { STATIONS, findStation, isNozomiMizuho } from "./stations";
 import type {
   JourneySegment,
   ThroughFareResult,
@@ -29,47 +24,6 @@ import type {
   CheapestSegment,
   ViaFareResult,
 } from "./types";
-
-// ─── ヘルパー ───────────────────────────────────────────
-
-/**
- * 東海道新幹線の東京～京都の駅かどうか判定（新大阪は含まない）
- */
-function isTokaidoUpToKyoto(stationId: string): boolean {
-  const station = findStation(stationId);
-  if (!station) return false;
-  return station.line === "tokaido" && station.id !== "shinosaka";
-}
-
-/**
- * 九州新幹線の駅かどうか判定
- */
-function isKyushu(stationId: string): boolean {
-  const station = findStation(stationId);
-  if (!station) return false;
-  return station.line === "kyushu";
-}
-
-/**
- * 博多分割レベル1の条件を満たすか判定
- * 東海道(東京～京都) ↔ 九州(新鳥栖～鹿児島中央)
- */
-function isLevel1HakataSplit(fromId: string, toId: string): boolean {
-  return (
-    (isTokaidoUpToKyoto(fromId) && isKyushu(toId)) ||
-    (isKyushu(fromId) && isTokaidoUpToKyoto(toId))
-  );
-}
-
-/**
- * 東海道(東京～京都) ↔ 九州をまたぐかどうか（全区間の端点で判定）
- */
-function isCrossRegionForSeason(fromId: string, toId: string): boolean {
-  return (
-    (isTokaidoUpToKyoto(fromId) && isKyushu(toId)) ||
-    (isKyushu(fromId) && isTokaidoUpToKyoto(toId))
-  );
-}
 
 // ─── 通し計算（System A） ──────────────────────────────────
 
@@ -129,7 +83,8 @@ function calculateThroughFare(
   const studentFareApplicable = Math.ceil(distance) >= 101;
 
   // 博多分割判定
-  const level1 = isLevel1HakataSplit(overallFrom, overallTo);
+  const overallRoute = new Route(overallFrom, overallTo);
+  const level1 = overallRoute.isCrossRegion;
 
   // グリーン車で博多をまたぐかどうか（Level 2判定用）
   const greenCrossesHakata =
@@ -189,9 +144,9 @@ function doesGreenCrossHakata(
   overallTo: string,
 ): boolean {
   // 博多が区間に含まれていなければfalse
-  if (!isHakataBetween(overallFrom, overallTo)) return false;
+  if (!new Route(overallFrom, overallTo).isHakataBetween) return false;
 
-  const hakataIdx = getStationIndex("hakata");
+  const hakataIdx = Route.HAKATA_INDEX;
 
   // グリーン車区間の開始・終了インデックスを求める
   let greenStart: number | null = null;
@@ -199,12 +154,9 @@ function doesGreenCrossHakata(
 
   for (const seg of segments) {
     if (seg.seatType === "green") {
-      const fromIdx = getStationIndex(seg.fromId);
-      const toIdx = getStationIndex(seg.toId);
-      const lo = Math.min(fromIdx, toIdx);
-      const hi = Math.max(fromIdx, toIdx);
-      if (greenStart === null || lo < greenStart) greenStart = lo;
-      if (greenEnd === null || hi > greenEnd) greenEnd = hi;
+      const r = new Route(seg.fromId, seg.toId);
+      if (greenStart === null || r.lo < greenStart) greenStart = r.lo;
+      if (greenEnd === null || r.hi > greenEnd) greenEnd = r.hi;
     }
   }
 
@@ -234,15 +186,14 @@ function calculateLevel1(
 
   // 東京側から見た並び順で、東海道・山陽側は overallFrom ↔ 博多
   // 九州側は 博多 ↔ overallTo
-  const fromIdx = getStationIndex(overallFrom);
-  const toIdx = getStationIndex(overallTo);
+  const overallRoute = new Route(overallFrom, overallTo);
 
   let tokaidoSanyoFrom: string;
   let tokaidoSanyoTo: string;
   let kyushuFrom: string;
   let kyushuTo: string;
 
-  if (fromIdx < toIdx) {
+  if (overallRoute.isDownward) {
     // 東京→鹿児島方向
     tokaidoSanyoFrom = overallFrom;
     tokaidoSanyoTo = "hakata";
@@ -305,19 +256,17 @@ function splitSegmentsAtHakata(
   tokaidoSanyoSegments: JourneySegment[];
   kyushuSegments: JourneySegment[];
 } {
-  const hakataIdx = getStationIndex("hakata");
-  const fromIdx = getStationIndex(overallFrom);
-  const toIdx = getStationIndex(overallTo);
-  const goingDown = fromIdx < toIdx; // 東京→鹿児島方向
+  const hakataIdx = Route.HAKATA_INDEX;
+  const overallRoute = new Route(overallFrom, overallTo);
+  const goingDown = overallRoute.isDownward; // 東京→鹿児島方向
 
   const tokaidoSanyoSegments: JourneySegment[] = [];
   const kyushuSegments: JourneySegment[] = [];
 
   for (const seg of segments) {
-    const segFromIdx = getStationIndex(seg.fromId);
-    const segToIdx = getStationIndex(seg.toId);
-    const segLo = Math.min(segFromIdx, segToIdx);
-    const segHi = Math.max(segFromIdx, segToIdx);
+    const segRoute = new Route(seg.fromId, seg.toId);
+    const segLo = segRoute.lo;
+    const segHi = segRoute.hi;
 
     if (segHi <= hakataIdx) {
       // 博多以前（東海道・山陽側）
@@ -471,7 +420,7 @@ function calculateSeasonalDiffForSide(
 ): number {
   const season = getSeason(date);
   let diff = SEASON_DIFF[season];
-  if (isCrossRegionForSeason(fromId, toId)) {
+  if (new Route(fromId, toId).isCrossRegion) {
     diff *= 2;
   }
   return diff;
@@ -497,12 +446,9 @@ function calculateGreenAdjustment(
   let greenToIdx = -Infinity;
 
   for (const seg of greenSegments) {
-    const fromIdx = getStationIndex(seg.fromId);
-    const toIdx = getStationIndex(seg.toId);
-    const lo = Math.min(fromIdx, toIdx);
-    const hi = Math.max(fromIdx, toIdx);
-    if (lo < greenFromIdx) greenFromIdx = lo;
-    if (hi > greenToIdx) greenToIdx = hi;
+    const r = new Route(seg.fromId, seg.toId);
+    if (r.lo < greenFromIdx) greenFromIdx = r.lo;
+    if (r.hi > greenToIdx) greenToIdx = r.hi;
   }
 
   // Get actual station IDs from indices
@@ -513,7 +459,7 @@ function calculateGreenAdjustment(
 
   if (greenSplitAtHakata) {
     // Level 2: green_chargeを博多で分割
-    const hakataIdx = getStationIndex("hakata");
+    const hakataIdx = Route.HAKATA_INDEX;
 
     if (greenFromIdx < hakataIdx && greenToIdx > hakataIdx) {
       // 博多をまたぐ → 分割
@@ -596,12 +542,9 @@ function calculateNozomiSurcharge(
   let nozomiStartIdx = Infinity;
   let nozomiEndIdx = -Infinity;
   for (const seg of nozomiSegments) {
-    const fromIdx = getStationIndex(seg.fromId);
-    const toIdx = getStationIndex(seg.toId);
-    const lo = Math.min(fromIdx, toIdx);
-    const hi = Math.max(fromIdx, toIdx);
-    if (lo < nozomiStartIdx) nozomiStartIdx = lo;
-    if (hi > nozomiEndIdx) nozomiEndIdx = hi;
+    const r = new Route(seg.fromId, seg.toId);
+    if (r.lo < nozomiStartIdx) nozomiStartIdx = r.lo;
+    if (r.hi > nozomiEndIdx) nozomiEndIdx = r.hi;
   }
 
   const nozomiStartId =

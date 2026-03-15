@@ -14,7 +14,7 @@ import {
   calculateViaFare,
   validateGreenContiguity,
 } from "./data/viaCalculator";
-import { findStation, getAvailableTrainsFiltered } from "./data/stations";
+import { Route, stationName } from "./data/Route";
 import type {
   SeatType,
   TrainType,
@@ -215,7 +215,7 @@ function App() {
       const segFrom = allStops[i];
       const segTo = allStops[i + 1];
       if (!segFrom || !segTo) return config;
-      const available = getAvailableTrainsFiltered(segFrom, segTo);
+      const available = new Route(segFrom, segTo).availableTrainsFiltered;
       if (!available.includes(config.trainType)) {
         return { ...config, trainType: null };
       }
@@ -408,8 +408,8 @@ function App() {
     );
   }, [fromId, toId, dateStr, viaStations, segmentConfigs, useGakuwari]);
 
-  const fromStation = findStation(fromId);
-  const toStation = findStation(toId);
+  const fromName = stationName(fromId);
+  const toName = stationName(toId);
 
   return (
     <div className="app">
@@ -463,7 +463,7 @@ function App() {
           <section className="result-section">
             <div className="result-header">
               <h2 className="result-title">
-                {fromStation?.name ?? fromId} → {toStation?.name ?? toId}
+                {fromName} → {toName}
               </h2>
               <div className="result-meta">
                 <span>{dateStr}</span>
@@ -484,15 +484,10 @@ function App() {
           <section className="result-section">
             <div className="result-header">
               <h2 className="result-title">
-                {fromStation?.name ?? fromId}
-                {viaStations
-                  .map((v) => {
-                    const s = findStation(v);
-                    return ` → ${s?.name ?? v}`;
-                  })
-                  .join("")}
+                {fromName}
+                {viaStations.map((v) => ` → ${stationName(v)}`).join("")}
                 {" → "}
-                {toStation?.name ?? toId}
+                {toName}
               </h2>
               <div className="result-meta">
                 <span>{dateStr}</span>

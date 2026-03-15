@@ -1,4 +1,5 @@
-import { findStation } from "../data/stations";
+import { stationName } from "../data/Route";
+import { formatYen } from "./ui/format";
 import type {
   FreeSeatSplitResult,
   MixedSplitGroup,
@@ -9,14 +10,6 @@ import type {
 type Props = {
   result: SplitSearchResult;
 };
-
-function formatYen(value: number): string {
-  return `${value.toLocaleString()}円`;
-}
-
-function stationName(id: string): string {
-  return findStation(id)?.name ?? id;
-}
 
 function FreeSeatSplitSection({ split }: { split: FreeSeatSplitResult }) {
   return (

@@ -14,7 +14,8 @@ import {
   calculateSeasonalDiff,
   getPlatKodamaPriceClass,
 } from "./calculator";
-import { getStationsBetween, findStation } from "./stations";
+import { findStation } from "./stations";
+import { Route } from "./Route";
 import type { FareFilter } from "./types";
 
 // ─── 型定義 ───────────────────────────────────────────
@@ -92,7 +93,7 @@ export function searchSplitFares(
   const throughTotal = throughTicketFare + throughFreeFare;
 
   // 途中駅リストを取得
-  const betweenStations = getStationsBetween(fromId, toId);
+  const betweenStations = new Route(fromId, toId).stationsBetween();
   if (betweenStations.length === 0) {
     return { freeSeatSplit: null, mixedSplit: null };
   }

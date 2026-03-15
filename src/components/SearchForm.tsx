@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactNode } from "react";
 import StationSelect from "./StationSelect";
 import SeasonBadge from "./SeasonBadge";
 
@@ -12,10 +12,10 @@ interface SearchFormProps {
   onDateChange: (date: string) => void;
   onGakuwariChange: (checked: boolean) => void;
   onSwap: () => void;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
-const SearchForm: React.FC<SearchFormProps> = ({
+function SearchForm({
   fromId,
   toId,
   dateStr,
@@ -26,7 +26,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
   onGakuwariChange,
   onSwap,
   children,
-}) => {
+}: SearchFormProps) {
   const selectedDate = dateStr ? new Date(dateStr) : null;
 
   return (
@@ -84,6 +84,6 @@ const SearchForm: React.FC<SearchFormProps> = ({
       {children}
     </div>
   );
-};
+}
 
 export default SearchForm;

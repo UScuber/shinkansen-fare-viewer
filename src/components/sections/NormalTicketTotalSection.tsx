@@ -1,9 +1,10 @@
 import FareSection from "../FareSection";
 import TrainLabel from "../TrainLabel";
+import { formatYen } from "../ui/format";
+import { NOZOMI_MIZUHO, NON_NOZOMI_MIZUHO } from "../ui/trainLabels";
 import type { CalculatedFares } from "../../data/calculator";
 import type { FareFilter } from "../../data/types";
 import { isProductVisible, type ProductId } from "../../data/fareFilter";
-import { TRAIN_TAGS } from "../../data/trainTags";
 
 type Props = {
   fares: CalculatedFares;
@@ -11,18 +12,13 @@ type Props = {
   filter?: FareFilter | null;
 };
 
-function formatYen(n: number | null): string {
-  if (n === null) return "-";
-  return `${n.toLocaleString()}円`;
-}
-
 function NormalTicketTotalSection({ fares, useGakuwari, filter }: Props) {
   const ticketFare = useGakuwari ? fares.studentFare : fares.ticketFare;
 
   if (ticketFare === null) return null;
 
-  const nozomiMizuho = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}`;
-  const nonNozomiMizuho = `${TRAIN_TAGS.kodama}${TRAIN_TAGS.hikari}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
+  const nozomiMizuho = NOZOMI_MIZUHO;
+  const nonNozomiMizuho = NON_NOZOMI_MIZUHO;
 
   const f = filter ?? null;
 

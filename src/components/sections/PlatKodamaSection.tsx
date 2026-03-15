@@ -1,5 +1,6 @@
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
+import FareTableView from "../ui/FareTableView";
 import type { CalculatedFares } from "../../data/calculator";
 import type { FareFilter } from "../../data/types";
 import { isProductVisible } from "../../data/fareFilter";
@@ -11,6 +12,8 @@ type Props = {
   date: Date;
   filter?: FareFilter | null;
 };
+
+const PRICE_CLASSES = ["A", "B", "C", "D"] as const;
 
 function PlatKodamaSection({ fares, date, filter }: Props) {
   const priceClass = fares.platKodamaPriceClass;
@@ -32,74 +35,43 @@ function PlatKodamaSection({ fares, date, filter }: Props) {
     return null;
   }
 
+  const reservedKeys = {
+    A: fares.platKodamaReservedA,
+    B: fares.platKodamaReservedB,
+    C: fares.platKodamaReservedC,
+    D: fares.platKodamaReservedD,
+  } as const;
+
+  const greenKeys = {
+    A: fares.platKodamaGreenA,
+    B: fares.platKodamaGreenB,
+    C: fares.platKodamaGreenC,
+    D: fares.platKodamaGreenD,
+  } as const;
+
+  const seatConfigs = [
+    { show: showReserved, suffix: "普通車", values: reservedKeys },
+    { show: showGreen, suffix: "グリーン車", values: greenKeys },
+  ];
+
   return (
     <FareSection title="ぷらっとこだま" note={note}>
-      <table className="fare-table__table">
-        <thead>
-          <tr>
-            <th>項目</th>
-            <th>料金</th>
-          </tr>
-        </thead>
-        <tbody>
-          {showReserved && (priceClass === null || priceClass === "A") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}A料金 普通車`}
-              value={fares.platKodamaReservedA}
-              italic={isExpired}
-            />
-          )}
-          {showReserved && (priceClass === null || priceClass === "B") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}B料金 普通車`}
-              value={fares.platKodamaReservedB}
-              italic={isExpired}
-            />
-          )}
-          {showReserved && (priceClass === null || priceClass === "C") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}C料金 普通車`}
-              value={fares.platKodamaReservedC}
-              italic={isExpired}
-            />
-          )}
-          {showReserved && (priceClass === null || priceClass === "D") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}D料金 普通車`}
-              value={fares.platKodamaReservedD}
-              italic={isExpired}
-            />
-          )}
-          {showGreen && (priceClass === null || priceClass === "A") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}A料金 グリーン車`}
-              value={fares.platKodamaGreenA}
-              italic={isExpired}
-            />
-          )}
-          {showGreen && (priceClass === null || priceClass === "B") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}B料金 グリーン車`}
-              value={fares.platKodamaGreenB}
-              italic={isExpired}
-            />
-          )}
-          {showGreen && (priceClass === null || priceClass === "C") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}C料金 グリーン車`}
-              value={fares.platKodamaGreenC}
-              italic={isExpired}
-            />
-          )}
-          {showGreen && (priceClass === null || priceClass === "D") && (
-            <FareRow
-              label={`${TRAIN_TAGS.kodama}D料金 グリーン車`}
-              value={fares.platKodamaGreenD}
-              italic={isExpired}
-            />
-          )}
-        </tbody>
-      </table>
+      <FareTableView>
+        {seatConfigs.flatMap((seat) =>
+          seat.show
+            ? PRICE_CLASSES.filter(
+                (cls) => priceClass === null || priceClass === cls,
+              ).map((cls) => (
+                <FareRow
+                  key={`${seat.suffix}-${cls}`}
+                  label={`${TRAIN_TAGS.kodama}${cls}料金 ${seat.suffix}`}
+                  value={seat.values[cls]}
+                  italic={isExpired}
+                />
+              ))
+            : [],
+        )}
+      </FareTableView>
     </FareSection>
   );
 }

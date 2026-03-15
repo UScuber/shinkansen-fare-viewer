@@ -1,5 +1,6 @@
-import React from "react";
-import { findStation, isNozomiMizuho } from "../data/stations";
+import { isNozomiMizuho } from "../data/stations";
+import { stationName } from "../data/Route";
+import { formatYen } from "./ui/format";
 import type {
   ViaFareResult as ViaFareResultType,
   ThroughFareResult,
@@ -13,15 +14,6 @@ type Props = {
   useGakuwari: boolean;
   segments: JourneySegment[];
 };
-
-function formatYen(value: number | null): string {
-  if (value === null) return "-";
-  return `${value.toLocaleString()}円`;
-}
-
-function stationName(id: string): string {
-  return findStation(id)?.name ?? id;
-}
 
 /**
  * 指定された列車にのぞみ/みずほが含まれているか判定
@@ -269,7 +261,7 @@ function CheapestSection({
   );
 }
 
-const ViaFareResult: React.FC<Props> = ({ result, useGakuwari, segments }) => {
+function ViaFareResult({ result, useGakuwari, segments }: Props) {
   return (
     <div className="via-result">
       <ThroughSection
@@ -280,6 +272,6 @@ const ViaFareResult: React.FC<Props> = ({ result, useGakuwari, segments }) => {
       {result.cheapest && <CheapestSection cheapest={result.cheapest} />}
     </div>
   );
-};
+}
 
 export default ViaFareResult;
