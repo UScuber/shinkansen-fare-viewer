@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: "/shinkansen-fare-viewer/",
   plugins: [tailwindcss(), react()],
   resolve: {
     alias: {
