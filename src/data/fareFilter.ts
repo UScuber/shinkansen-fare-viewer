@@ -1,146 +1,133 @@
-import type { SeatType, TrainType, FareFilter } from "./types";
+import type { FareFilter, SeatType, TrainType } from "./types";
 
-/** 商品ID */
-export type ProductId =
-  // 特急券
-  | "expressNozomiMizuhoReserved"
-  | "expressOtherReserved"
-  | "expressNozomiMizuhoGreen"
-  | "expressOtherGreen"
-  | "expressFree"
-  // スマートEX
-  | "smartexNozomiMizuhoReserved"
-  | "smartexOtherReserved"
-  | "smartexNozomiMizuhoGreen"
-  | "smartexOtherGreen"
-  | "smartexFree"
-  // 早特
-  | "hayatoku1Free"
-  | "hayatoku3NozomiMizuhoSakuraTsubameGreen"
-  | "hayatoku3HikariGreen"
-  | "hayatoku3KodamaGreen"
-  | "hayatoku7NozomiMizuhoSakuraTsubameReserved"
-  | "hayatoku7HikariKodamaReserved"
-  | "hayatoku21NozomiMizuhoSakuraTsubameReserved"
-  | "familyHayatoku7HikariKodamaReserved"
-  // ぷらっとこだま
-  | "platKodamaReserved"
-  | "platKodamaGreen";
+/** 商品定義 */
+interface ProductDef {
+  id: string;
+  seats: SeatType[];
+  trains: TrainType[] | "all";
+}
 
-type ProductDef = {
-  compatibleTrains: TrainType[] | "all";
-  compatibleSeat: SeatType;
-};
-
-const PRODUCT_DEFS: Record<ProductId, ProductDef> = {
-  // 特急券
-  expressNozomiMizuhoReserved: {
-    compatibleTrains: ["nozomi", "mizuho"],
-    compatibleSeat: "reserved",
+/** 各商品のフィルタリング用定義 */
+const PRODUCT_DEFS: ProductDef[] = [
+  // 通常きっぷ
+  { id: "express_free", seats: ["free"], trains: "all" },
+  {
+    id: "express_hikari_reserved",
+    seats: ["reserved"],
+    trains: ["hikari", "kodama", "sakura", "tsubame"],
   },
-  expressOtherReserved: {
-    compatibleTrains: ["hikari", "kodama", "sakura", "tsubame"],
-    compatibleSeat: "reserved",
+  {
+    id: "express_nozomi_reserved",
+    seats: ["reserved"],
+    trains: ["nozomi", "mizuho"],
   },
-  expressNozomiMizuhoGreen: {
-    compatibleTrains: ["nozomi", "mizuho"],
-    compatibleSeat: "green",
+  {
+    id: "express_hikari_green",
+    seats: ["green"],
+    trains: ["hikari", "kodama", "sakura", "tsubame"],
   },
-  expressOtherGreen: {
-    compatibleTrains: ["hikari", "kodama", "sakura", "tsubame"],
-    compatibleSeat: "green",
+  {
+    id: "express_nozomi_green",
+    seats: ["green"],
+    trains: ["nozomi", "mizuho"],
   },
-  expressFree: {
-    compatibleTrains: "all",
-    compatibleSeat: "free",
+  // 通常きっぷ合計
+  { id: "total_free", seats: ["free"], trains: "all" },
+  {
+    id: "total_hikari_reserved",
+    seats: ["reserved"],
+    trains: ["hikari", "kodama", "sakura", "tsubame"],
   },
-  // スマートEX
-  smartexNozomiMizuhoReserved: {
-    compatibleTrains: ["nozomi", "mizuho"],
-    compatibleSeat: "reserved",
+  {
+    id: "total_nozomi_reserved",
+    seats: ["reserved"],
+    trains: ["nozomi", "mizuho"],
   },
-  smartexOtherReserved: {
-    compatibleTrains: ["hikari", "kodama", "sakura", "tsubame"],
-    compatibleSeat: "reserved",
+  {
+    id: "total_hikari_green",
+    seats: ["green"],
+    trains: ["hikari", "kodama", "sakura", "tsubame"],
   },
-  smartexNozomiMizuhoGreen: {
-    compatibleTrains: ["nozomi", "mizuho"],
-    compatibleSeat: "green",
+  { id: "total_nozomi_green", seats: ["green"], trains: ["nozomi", "mizuho"] },
+  // SmartEX
+  { id: "smartex_free", seats: ["free"], trains: "all" },
+  {
+    id: "smartex_reserved",
+    seats: ["reserved"],
+    trains: ["hikari", "kodama", "sakura", "tsubame"],
   },
-  smartexOtherGreen: {
-    compatibleTrains: ["hikari", "kodama", "sakura", "tsubame"],
-    compatibleSeat: "green",
+  {
+    id: "smartex_reserved_nozomi",
+    seats: ["reserved"],
+    trains: ["nozomi", "mizuho"],
   },
-  smartexFree: {
-    compatibleTrains: "all",
-    compatibleSeat: "free",
+  {
+    id: "smartex_green",
+    seats: ["green"],
+    trains: ["hikari", "kodama", "sakura", "tsubame"],
+  },
+  {
+    id: "smartex_green_nozomi",
+    seats: ["green"],
+    trains: ["nozomi", "mizuho"],
   },
   // 早特
-  hayatoku1Free: {
-    compatibleTrains: ["hikari", "kodama"],
-    compatibleSeat: "free",
+  { id: "hayatoku1", seats: ["free"], trains: ["hikari", "kodama"] },
+  {
+    id: "hayatoku3_nozomi_green",
+    seats: ["green"],
+    trains: ["nozomi", "mizuho", "sakura", "tsubame"],
   },
-  hayatoku3NozomiMizuhoSakuraTsubameGreen: {
-    compatibleTrains: ["nozomi", "mizuho", "sakura", "tsubame"],
-    compatibleSeat: "green",
+  { id: "hayatoku3_hikari_green", seats: ["green"], trains: ["hikari"] },
+  { id: "hayatoku3_kodama_green", seats: ["green"], trains: ["kodama"] },
+  {
+    id: "hayatoku7_nozomi_reserved",
+    seats: ["reserved"],
+    trains: ["nozomi", "mizuho", "sakura", "tsubame"],
   },
-  hayatoku3HikariGreen: {
-    compatibleTrains: ["hikari"],
-    compatibleSeat: "green",
+  {
+    id: "hayatoku7_hikari_reserved",
+    seats: ["reserved"],
+    trains: ["hikari", "kodama"],
   },
-  hayatoku3KodamaGreen: {
-    compatibleTrains: ["kodama"],
-    compatibleSeat: "green",
+  {
+    id: "hayatoku21_nozomi_reserved",
+    seats: ["reserved"],
+    trains: ["nozomi", "mizuho", "sakura", "tsubame"],
   },
-  hayatoku7NozomiMizuhoSakuraTsubameReserved: {
-    compatibleTrains: ["nozomi", "mizuho", "sakura", "tsubame"],
-    compatibleSeat: "reserved",
-  },
-  hayatoku7HikariKodamaReserved: {
-    compatibleTrains: ["hikari", "kodama"],
-    compatibleSeat: "reserved",
-  },
-  hayatoku21NozomiMizuhoSakuraTsubameReserved: {
-    compatibleTrains: ["nozomi", "mizuho", "sakura", "tsubame"],
-    compatibleSeat: "reserved",
-  },
-  familyHayatoku7HikariKodamaReserved: {
-    compatibleTrains: ["hikari", "kodama"],
-    compatibleSeat: "reserved",
+  {
+    id: "family_hayatoku7_hikari_reserved",
+    seats: ["reserved"],
+    trains: ["hikari", "kodama"],
   },
   // ぷらっとこだま
-  platKodamaReserved: {
-    compatibleTrains: ["kodama"],
-    compatibleSeat: "reserved",
-  },
-  platKodamaGreen: {
-    compatibleTrains: ["kodama"],
-    compatibleSeat: "green",
-  },
-};
+  { id: "plat_kodama_reserved", seats: ["reserved"], trains: ["kodama"] },
+  { id: "plat_kodama_green", seats: ["green"], trains: ["kodama"] },
+];
 
-/**
- * フィルタ条件に基づいて商品を表示すべきかを判定する
- */
+const productMap = new Map<string, ProductDef>(
+  PRODUCT_DEFS.map((p) => [p.id, p]),
+);
+
+/** 商品がフィルタ条件に一致するか判定 */
 export function isProductVisible(
-  productId: ProductId,
-  filter: FareFilter | null,
+  productId: string,
+  filter: FareFilter,
 ): boolean {
-  if (!filter) return true;
-  if (filter.seatType === null && filter.trainType === null) return true;
+  const def = productMap.get(productId);
+  if (!def) return true;
 
-  const def = PRODUCT_DEFS[productId];
-
-  if (filter.seatType !== null && def.compatibleSeat !== filter.seatType) {
+  // 座席種別フィルタ
+  if (filter.seatType && !def.seats.includes(filter.seatType)) {
     return false;
   }
-  if (filter.trainType !== null) {
-    if (
-      def.compatibleTrains !== "all" &&
-      !def.compatibleTrains.includes(filter.trainType)
-    ) {
+
+  // 列車名フィルタ
+  if (filter.trainType && def.trains !== "all") {
+    if (!def.trains.includes(filter.trainType)) {
       return false;
     }
   }
+
   return true;
 }

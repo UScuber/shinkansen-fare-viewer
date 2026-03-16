@@ -1,41 +1,36 @@
-import FareSection from "../FareSection";
-import FareRow from "../FareRow";
-import FareTableView from "../ui/FareTableView";
-import type { FareFilter } from "../../data/types";
-import { isProductVisible, type ProductId } from "../../data/fareFilter";
+import type { CalculatedFares, FareFilter } from "../../data/types";
+import TicketSection from "./TicketSection";
+import NormalTicketTotalSection from "./NormalTicketTotalSection";
+import ExpressSection from "./ExpressSection";
+import SmartExSection from "./SmartExSection";
+import HayatokuSection from "./HayatokuSection";
+import PlatKodamaSection from "./PlatKodamaSection";
 
-export type FareRowDef = {
-  label: string;
-  value: number | null;
-  productId: ProductId;
-  extraCheck?: boolean;
-};
-
-type Props = {
-  title: string;
-  rows: FareRowDef[];
-  filter?: FareFilter | null;
-};
-
-function FareListSection({ title, rows, filter }: Props) {
-  const f = filter ?? null;
-  const visible = rows.filter(
-    (r) =>
-      r.value !== null &&
-      (r.extraCheck === undefined || r.extraCheck) &&
-      isProductVisible(r.productId, f),
-  );
-  if (visible.length === 0) return null;
-
-  return (
-    <FareSection title={title}>
-      <FareTableView>
-        {visible.map((r) => (
-          <FareRow key={r.productId} label={r.label} value={r.value} />
-        ))}
-      </FareTableView>
-    </FareSection>
-  );
+interface FareListSectionProps {
+  fares: CalculatedFares;
+  useGakuwari: boolean;
+  filter: FareFilter;
+  showSmartEx: boolean;
 }
 
-export default FareListSection;
+export default function FareListSection({
+  fares,
+  useGakuwari,
+  filter,
+  showSmartEx,
+}: FareListSectionProps) {
+  return (
+    <div className="space-y-0">
+      <TicketSection fares={fares} useGakuwari={useGakuwari} />
+      <NormalTicketTotalSection
+        fares={fares}
+        useGakuwari={useGakuwari}
+        filter={filter}
+      />
+      <ExpressSection fares={fares} filter={filter} />
+      {showSmartEx && <SmartExSection fares={fares} filter={filter} />}
+      <HayatokuSection fares={fares} filter={filter} />
+      <PlatKodamaSection fares={fares} filter={filter} />
+    </div>
+  );
+}

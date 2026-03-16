@@ -1,89 +1,102 @@
-import type { ReactNode } from "react";
+import type { SegmentConfig, StationId } from "../data/types";
+import type { SeasonType } from "../data/types";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import StationSelect from "./StationSelect";
 import SeasonBadge from "./SeasonBadge";
+import DetailedSettings from "./DetailedSettings";
 
 interface SearchFormProps {
-  fromId: string;
-  toId: string;
+  from: StationId;
+  to: StationId;
   dateStr: string;
   useGakuwari: boolean;
-  onFromChange: (id: string) => void;
-  onToChange: (id: string) => void;
+  season: SeasonType;
+  viaStations: StationId[];
+  segmentConfigs: SegmentConfig[];
+  onFromChange: (id: StationId) => void;
+  onToChange: (id: StationId) => void;
   onDateChange: (date: string) => void;
-  onGakuwariChange: (checked: boolean) => void;
+  onGakuwariChange: (use: boolean) => void;
   onSwap: () => void;
-  children?: ReactNode;
+  onViaStationsChange: (via: StationId[]) => void;
+  onSegmentConfigsChange: (configs: SegmentConfig[]) => void;
 }
 
-function SearchForm({
-  fromId,
-  toId,
+export default function SearchForm({
+  from,
+  to,
   dateStr,
   useGakuwari,
+  season,
+  viaStations,
+  segmentConfigs,
   onFromChange,
   onToChange,
   onDateChange,
   onGakuwariChange,
   onSwap,
-  children,
+  onViaStationsChange,
+  onSegmentConfigsChange,
 }: SearchFormProps) {
-  const selectedDate = dateStr ? new Date(dateStr) : null;
-
   return (
-    <div className="search-form">
-      <div className="search-form__stations">
+    <div className="rounded-lg bg-gray-100 p-4">
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
         <StationSelect
-          label="出発駅"
-          value={fromId}
+          value={from}
           onChange={onFromChange}
-          exclude={toId}
+          excludeId={to}
+          label="出発駅"
         />
-        <button
-          className="swap-btn"
+        <Button
+          variant="secondary"
+          size="icon"
+          className="shrink-0 self-center rounded-full sm:rotate-0"
           onClick={onSwap}
-          title="出発・到着を入れ替え"
+          title="入れ替え"
         >
           ⇄
-        </button>
+        </Button>
         <StationSelect
-          label="到着駅"
-          value={toId}
+          value={to}
           onChange={onToChange}
-          exclude={fromId}
+          excludeId={from}
+          label="到着駅"
         />
       </div>
 
-      <div className="search-form__options">
-        <div className="form-group">
-          <label className="form-label">移動日</label>
-          <div className="date-input-wrap">
-            <input
-              type="date"
-              className="form-input"
-              value={dateStr}
-              onChange={(e) => onDateChange(e.target.value)}
-              min="2025-04-01"
-              max="2027-03-31"
-            />
-            {selectedDate && <SeasonBadge date={selectedDate} />}
-          </div>
-        </div>
-      </div>
-
-      <div className="search-form__gakuwari">
-        <label className="gakuwari-label">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          移動日
           <input
-            type="checkbox"
-            checked={useGakuwari}
-            onChange={(e) => onGakuwariChange(e.target.checked)}
+            type="date"
+            className="rounded border border-gray-300 px-2 py-1 text-sm"
+            value={dateStr}
+            onChange={(e) => onDateChange(e.target.value)}
+            min="2025-04-01"
+            max="2027-03-31"
           />
-          <span>学割を適用する</span>
         </label>
+        <SeasonBadge season={season} />
       </div>
 
-      {children}
+      <Label className="mt-2.5 cursor-pointer text-sm text-gray-600">
+        <Checkbox
+          checked={useGakuwari}
+          onCheckedChange={(checked) => onGakuwariChange(checked === true)}
+        />
+        学割を適用する
+      </Label>
+
+      <DetailedSettings
+        from={from}
+        to={to}
+        viaStations={viaStations}
+        segmentConfigs={segmentConfigs}
+        onViaStationsChange={onViaStationsChange}
+        onSegmentConfigsChange={onSegmentConfigsChange}
+      />
     </div>
   );
 }
-
-export default SearchForm;

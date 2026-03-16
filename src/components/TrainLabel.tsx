@@ -1,36 +1,18 @@
-import React from "react";
+import type { TrainType } from "../data/types";
 import TrainIcon from "./TrainIcon";
-import { isTrainTag } from "./trainTagMap";
 
-type TrainLabelProps = {
-  label: string;
-};
-
-function TrainLabel({ label }: TrainLabelProps) {
-  const parts: React.ReactNode[] = [];
-  const tagRegex = /<([^<>]+)>/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null = null;
-
-  while ((match = tagRegex.exec(label)) !== null) {
-    const matchIndex = match.index;
-    if (matchIndex > lastIndex) {
-      parts.push(label.slice(lastIndex, matchIndex));
-    }
-    const tag = match[1];
-    if (isTrainTag(tag)) {
-      parts.push(<TrainIcon key={`${tag}-${matchIndex}`} tag={tag} />);
-    } else {
-      parts.push(match[0]);
-    }
-    lastIndex = matchIndex + match[0].length;
-  }
-
-  if (lastIndex < label.length) {
-    parts.push(label.slice(lastIndex));
-  }
-
-  return <>{parts.length > 0 ? parts : label}</>;
+interface TrainLabelProps {
+  trainTypes: TrainType[];
+  suffix?: string;
 }
 
-export default TrainLabel;
+export default function TrainLabel({ trainTypes, suffix }: TrainLabelProps) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {trainTypes.map((t) => (
+        <TrainIcon key={t} trainType={t} />
+      ))}
+      {suffix && <span className="text-[0.85rem]">{suffix}</span>}
+    </span>
+  );
+}

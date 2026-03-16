@@ -1,163 +1,99 @@
-/**
- * URLクエリパラメータのエンコード・デコード
- */
+import type { SeatType, SegmentConfig, StationId } from "../data/types";
+import { isValidStationId } from "../data/stations";
+import { trainTypeFromAbbr, trainTypeToAbbr } from "../data/trainTags";
 
-import type { SeatType, TrainType, SegmentConfig } from "../data/types";
-
-/* ===== Query parameter encoding ===== */
-
-const SEAT_TO_CODE: Record<string, string> = {
-  reserved: "r",
-  green: "g",
-  free: "f",
-};
-const CODE_TO_SEAT: Record<string, SeatType> = {
-  r: "reserved",
-  g: "green",
-  f: "free",
-};
-const TRAIN_TO_CODE: Record<string, string> = {
-  nozomi: "no",
-  hikari: "hi",
-  kodama: "ko",
-  mizuho: "mi",
-  sakura: "sa",
-  tsubame: "ts",
-};
-const CODE_TO_TRAIN: Record<string, TrainType> = {
-  no: "nozomi",
-  hi: "hikari",
-  ko: "kodama",
-  mi: "mizuho",
-  sa: "sakura",
-  ts: "tsubame",
-};
-
-export function toDateInputValue(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+/** 座席種別のURL略称 */
+function seatToAbbr(s: SeatType): string {
+  switch (s) {
+    case "reserved":
+      return "r";
+    case "green":
+      return "g";
+    case "free":
+      return "f";
+  }
 }
 
-export function normalizeDateStr(value: string | null): string {
-  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value;
+function seatFromAbbr(s: string): SeatType | null {
+  switch (s) {
+    case "r":
+      return "reserved";
+    case "g":
+      return "green";
+    case "f":
+      return "free";
+    default:
+      return null;
   }
-  return toDateInputValue(new Date());
 }
 
-export function updateQueryParams(
-  fromId: string,
-  toId: string,
-  dateStr: string,
-  viaStations: string[],
-  segmentConfigs: SegmentConfig[],
-  useGakuwari: boolean,
-): void {
-  const params = new URLSearchParams();
-  if (fromId) params.set("from", fromId);
-  if (toId) params.set("to", toId);
-  if (dateStr) params.set("date", dateStr);
-  if (viaStations.length > 0) {
-    params.set("via", viaStations.join(","));
-    const seatCodes = segmentConfigs
-      .map((c) => SEAT_TO_CODE[c.seatType ?? ""] ?? "r")
-      .join(",");
-    params.set("s", seatCodes);
-    const trainCodes = segmentConfigs
-      .map((c) => (c.trainType ? (TRAIN_TO_CODE[c.trainType] ?? "") : ""))
-      .join(",");
-    if (trainCodes.replace(/,/g, "")) {
-      params.set("t", trainCodes);
-    }
-  } else {
-    // フィルタモード: seatType/trainTypeが指定されている場合のみURLに保存
-    const config = segmentConfigs[0];
-    if (config) {
-      if (config.seatType !== null) {
-        params.set("s", SEAT_TO_CODE[config.seatType] ?? "");
-      }
-      if (config.trainType !== null) {
-        params.set("t", TRAIN_TO_CODE[config.trainType] ?? "");
-      }
-    }
-  }
-  if (useGakuwari) {
-    params.set("gaku", "1");
-  }
-  const query = params.toString();
-  const nextUrl = query
-    ? `${window.location.pathname}?${query}`
-    : window.location.pathname;
-  window.history.replaceState(null, "", nextUrl);
-}
-
-/** Parse initial state from URL query parameters */
-export function parseInitialParams(): {
-  fromId: string;
-  toId: string;
-  dateStr: string;
-  viaStations: string[];
+export interface ParsedUrlParams {
+  from: StationId;
+  to: StationId;
+  date: string;
+  gakuwari: boolean;
+  viaStations: StationId[];
   segmentConfigs: SegmentConfig[];
-  useGakuwari: boolean;
-} {
+}
+
+/** URLパラメータを解析 */
+export function parseUrlParams(): ParsedUrlParams {
   const params = new URLSearchParams(window.location.search);
-  const fromId = params.get("from") ?? "";
-  const toId = params.get("to") ?? "";
-  const dateStr = normalizeDateStr(params.get("date"));
-  const useGakuwari = params.get("gaku") === "1";
 
-  const viaStr = params.get("via") ?? "";
-  const viaStations = viaStr ? viaStr.split(",").filter(Boolean) : [];
+  const fromRaw = params.get("from") ?? "tokyo";
+  const toRaw = params.get("to") ?? "shinosaka";
+  const from: StationId = isValidStationId(fromRaw) ? fromRaw : "tokyo";
+  const to: StationId = isValidStationId(toRaw) ? toRaw : "shinosaka";
 
-  const seatStr = params.get("s") ?? "";
-  const seatCodes = seatStr ? seatStr.split(",") : [];
-  const trainStr = params.get("t") ?? "";
-  const trainCodes = trainStr ? trainStr.split(",") : [];
+  const date = params.get("date") ?? new Date().toISOString().slice(0, 10);
+  const gakuwari = params.get("gaku") === "1";
 
-  if (viaStations.length > 0) {
-    // 経由駅モード
-    const numSegments = viaStations.length + 1;
-    const segmentConfigs: SegmentConfig[] = [];
-    for (let i = 0; i < numSegments; i++) {
-      segmentConfigs.push({
-        seatType: CODE_TO_SEAT[seatCodes[i]] ?? "reserved",
-        trainType: trainCodes[i]
-          ? (CODE_TO_TRAIN[trainCodes[i]] ?? null)
-          : null,
-      });
-    }
-    return { fromId, toId, dateStr, viaStations, segmentConfigs, useGakuwari };
+  // 経由駅
+  const viaRaw = params.get("via") ?? "";
+  const viaStations: StationId[] = viaRaw
+    ? (viaRaw.split(",").filter((v) => isValidStationId(v)) as StationId[])
+    : [];
+
+  // 座席種別・列車名
+  const sRaw = params.get("s") ?? "";
+  const tRaw = params.get("t") ?? "";
+  const seats = sRaw ? sRaw.split(",") : [];
+  const trains = tRaw ? tRaw.split(",") : [];
+
+  const numSegments = viaStations.length + 1;
+  const segmentConfigs: SegmentConfig[] = [];
+  for (let i = 0; i < numSegments; i++) {
+    segmentConfigs.push({
+      seatType: seats[i] ? seatFromAbbr(seats[i]) : null,
+      trainType: trains[i] ? trainTypeFromAbbr(trains[i]) : null,
+    });
   }
 
-  // フィルタモード: sまたはtパラメータがあればフィルタを復元
-  const hasFilterParams = seatStr !== "" || trainStr !== "";
-  if (hasFilterParams) {
-    const seatType: SeatType | null =
-      seatCodes[0] && CODE_TO_SEAT[seatCodes[0]]
-        ? CODE_TO_SEAT[seatCodes[0]]
-        : null;
-    const trainType: TrainType | null =
-      trainCodes[0] && CODE_TO_TRAIN[trainCodes[0]]
-        ? CODE_TO_TRAIN[trainCodes[0]]
-        : null;
-    return {
-      fromId,
-      toId,
-      dateStr,
-      viaStations: [],
-      segmentConfigs: [{ seatType, trainType }],
-      useGakuwari,
-    };
+  return { from, to, date, gakuwari, viaStations, segmentConfigs };
+}
+
+/** URLパラメータを更新 */
+export function updateUrlParams(state: ParsedUrlParams): void {
+  const params = new URLSearchParams();
+  params.set("from", state.from);
+  params.set("to", state.to);
+  params.set("date", state.date);
+  if (state.gakuwari) params.set("gaku", "1");
+  if (state.viaStations.length > 0) {
+    params.set("via", state.viaStations.join(","));
   }
 
-  return {
-    fromId,
-    toId,
-    dateStr,
-    viaStations: [],
-    segmentConfigs: [{ seatType: null, trainType: null }],
-    useGakuwari,
-  };
+  const seats = state.segmentConfigs
+    .map((c) => (c.seatType ? seatToAbbr(c.seatType) : ""))
+    .join(",");
+  const trains = state.segmentConfigs
+    .map((c) => (c.trainType ? trainTypeToAbbr(c.trainType) : ""))
+    .join(",");
+
+  // 全て空でなければ設定
+  if (seats.replace(/,/g, "")) params.set("s", seats);
+  if (trains.replace(/,/g, "")) params.set("t", trains);
+
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState(null, "", newUrl);
 }

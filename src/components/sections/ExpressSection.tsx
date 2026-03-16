@@ -1,45 +1,74 @@
-import FareListSection, { type FareRowDef } from "./FareListSection";
-import { NOZOMI_MIZUHO, NON_NOZOMI_MIZUHO } from "../ui/trainLabels";
-import type { CalculatedFares } from "../../data/calculator";
-import type { FareFilter } from "../../data/types";
+import type { CalculatedFares, FareFilter } from "../../data/types";
+import FareSection from "../FareSection";
+import FareRow from "../FareRow";
+import TrainLabel from "../TrainLabel";
+import { isProductVisible } from "../../data/fareFilter";
 
-type Props = {
+interface ExpressSectionProps {
   fares: CalculatedFares;
-  filter?: FareFilter | null;
-};
-
-function ExpressSection({ fares, filter }: Props) {
-  const rows: FareRowDef[] = [
-    {
-      label: `${NOZOMI_MIZUHO}普通車`,
-      value: fares.expressNozomiMizuhoReserved,
-      productId: "expressNozomiMizuhoReserved",
-      extraCheck: fares.expressNozomiMizuhoReserved !== null,
-    },
-    {
-      label: `${NON_NOZOMI_MIZUHO}普通車`,
-      value: fares.expressOtherReserved,
-      productId: "expressOtherReserved",
-    },
-    {
-      label: `${NOZOMI_MIZUHO}グリーン車`,
-      value: fares.expressNozomiMizuhoGreen,
-      productId: "expressNozomiMizuhoGreen",
-      extraCheck: fares.expressNozomiMizuhoGreen !== null,
-    },
-    {
-      label: `${NON_NOZOMI_MIZUHO}グリーン車`,
-      value: fares.expressOtherGreen,
-      productId: "expressOtherGreen",
-    },
-    {
-      label: "自由席",
-      value: fares.expressFree,
-      productId: "expressFree",
-    },
-  ];
-
-  return <FareListSection title="特急券" rows={rows} filter={filter} />;
+  filter: FareFilter;
 }
 
-export default ExpressSection;
+export default function ExpressSection({ fares, filter }: ExpressSectionProps) {
+  const rows: { id: string; label: React.ReactNode; fare: number | null }[] =
+    [];
+
+  if (fares.nozomiReserved != null) {
+    rows.push({
+      id: "express_nozomi_reserved",
+      label: (
+        <TrainLabel trainTypes={["nozomi", "mizuho"]} suffix="普通車指定席" />
+      ),
+      fare: fares.nozomiReserved,
+    });
+  }
+
+  rows.push({
+    id: "express_hikari_reserved",
+    label: (
+      <TrainLabel
+        trainTypes={["hikari", "kodama", "sakura", "tsubame"]}
+        suffix="普通車指定席"
+      />
+    ),
+    fare: fares.hikariReserved,
+  });
+
+  if (fares.nozomiGreen != null) {
+    rows.push({
+      id: "express_nozomi_green",
+      label: (
+        <TrainLabel trainTypes={["nozomi", "mizuho"]} suffix="グリーン車" />
+      ),
+      fare: fares.nozomiGreen,
+    });
+  }
+
+  rows.push({
+    id: "express_hikari_green",
+    label: (
+      <TrainLabel
+        trainTypes={["hikari", "kodama", "sakura", "tsubame"]}
+        suffix="グリーン車"
+      />
+    ),
+    fare: fares.hikariGreen,
+  });
+
+  rows.push({
+    id: "express_free",
+    label: "自由席",
+    fare: fares.free,
+  });
+
+  const visible = rows.filter((r) => isProductVisible(r.id, filter));
+  if (visible.length === 0) return null;
+
+  return (
+    <FareSection title="特急券">
+      {visible.map((r) => (
+        <FareRow key={r.id} label={r.label} fare={r.fare} />
+      ))}
+    </FareSection>
+  );
+}

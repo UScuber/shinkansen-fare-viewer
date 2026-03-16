@@ -1,24 +1,38 @@
-import type { ReactNode } from "react";
+import type { CalculatedFares, FareFilter } from "../../data/types";
+import FareListSection from "../sections/FareListSection";
 
-type Props = {
-  children: ReactNode;
-  showHeader?: boolean;
-};
-
-function FareTableView({ children, showHeader = true }: Props) {
-  return (
-    <table className="fare-table__table">
-      {showHeader && (
-        <thead>
-          <tr>
-            <th>項目</th>
-            <th>料金</th>
-          </tr>
-        </thead>
-      )}
-      <tbody>{children}</tbody>
-    </table>
-  );
+interface FareTableViewProps {
+  fares: CalculatedFares | null;
+  useGakuwari: boolean;
+  filter: FareFilter;
+  showSmartEx: boolean;
+  error?: string | null;
 }
 
-export default FareTableView;
+export default function FareTableView({
+  fares,
+  useGakuwari,
+  filter,
+  showSmartEx,
+  error,
+}: FareTableViewProps) {
+  if (error) {
+    return <div className="p-5 text-center text-sm text-red-500">{error}</div>;
+  }
+  if (!fares) {
+    return (
+      <div className="p-5 text-center text-sm text-red-500">
+        区間のデータが見つかりません
+      </div>
+    );
+  }
+
+  return (
+    <FareListSection
+      fares={fares}
+      useGakuwari={useGakuwari}
+      filter={filter}
+      showSmartEx={showSmartEx}
+    />
+  );
+}

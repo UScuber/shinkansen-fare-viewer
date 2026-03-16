@@ -1,527 +1,310 @@
-/**
- * 通し計算（System A）
- * 全区間を通しで特急料金を計算するロジック
- */
-
-import { getAllFares } from "../allFares";
-import { calculateStudentFare } from "../calculator";
-import { getSeason, SEASON_DIFF } from "../calendar";
-import { Route } from "../Route";
-import { STATIONS, isNozomiMizuho, type StationId } from "../stations";
 import type {
-  JourneySegment,
-  ThroughFareResult,
-  SideBreakdown,
-  SegmentDetail,
-  NozomiSurchargeMethod,
+  ExpressFareBreakdown,
+  SegmentConfig,
+  StationId,
+  ViaFareResult,
 } from "../types";
+import { getFareEntry } from "../allFares";
+import { calcGakuwariTicketFare } from "../calculator";
+import { getSeason, getSeasonalBaseDiff } from "../calendar";
+import { getStationIndex, isCrossRegion, HAKATA_INDEX } from "../stations";
+import { needsLevel1Split, crossesHakata } from "./validation";
 
-/**
- * 通し計算（System A）
- */
+/** 通し計算（System A） */
 export function calculateThroughFare(
-  segments: JourneySegment[],
-  overallFrom: StationId,
-  overallTo: StationId,
-  date: Date,
-): ThroughFareResult | null {
-  // 乗車券（通し）
-  const overallFareData = getAllFares(overallFrom, overallTo);
-  if (!overallFareData) return null;
+  from: StationId,
+  to: StationId,
+  segments: { from: StationId; to: StationId }[],
+  configs: SegmentConfig[],
+  dateStr: string,
+): ViaFareResult | null {
+  // 乗車券は通し
+  const fareEntry = getFareEntry(from, to);
+  if (!fareEntry) return null;
 
-  const distance = overallFareData.distance;
-  const ticketFare = overallFareData.ticket_fare;
-  if (ticketFare === null) return null;
+  const ticketFare = fareEntry.ticket_fare;
+  const distance = fareEntry.distance;
+  const gakuwariTicketFare = calcGakuwariTicketFare(ticketFare, distance);
 
-  const studentFare = calculateStudentFare(distance, ticketFare) ?? ticketFare;
-  const studentFareApplicable = Math.ceil(distance) >= 101;
+  const season = getSeason(dateStr);
+  const baseDiff = getSeasonalBaseDiff(season);
 
-  // 博多分割判定
-  const overallRoute = new Route(overallFrom, overallTo);
-  const level1 = overallRoute.isCrossRegion;
+  // 座席種別の判定
+  const hasReservedOrGreen = configs.some(
+    (c) => c.seatType === "reserved" || c.seatType === "green",
+  );
+  const hasGreen = configs.some((c) => c.seatType === "green");
 
-  // グリーン車で博多をまたぐかどうか（Level 2判定用）
-  const greenCrossesHakata =
-    !level1 && doesGreenCrossHakata(segments, overallFrom, overallTo);
-
-  if (level1) {
-    // Level 1: 博多で特急券を完全分離
-    const result = calculateLevel1(segments, overallFrom, overallTo, date);
-    if (!result) return null;
-
-    return {
+  // 博多分割レベル1判定
+  if (needsLevel1Split(from, to)) {
+    return calculateLevel1Split(
+      from,
+      to,
+      segments,
+      configs,
+      baseDiff,
       ticketFare,
-      studentFare,
+      gakuwariTicketFare,
       distance,
-      studentFareApplicable,
-      expressFareNozomi: result.nozomiFare,
-      expressFareOther: result.otherFare,
-      breakdown: {
-        hakataLevel1Split: true,
-        hakataLevel2Split: false,
-        sides: result.sides,
-      },
-    };
+    );
   }
 
-  // Level 1でない場合: 通し計算
-  const result = calculateOneSide(
-    segments,
-    overallFrom,
-    overallTo,
-    date,
-    greenCrossesHakata,
-  );
-  if (!result) return null;
+  // 通常の通し計算
+  const crossRegion = isCrossRegion(from, to);
+  const seasonalDiff = hasReservedOrGreen
+    ? crossRegion
+      ? baseDiff * 2
+      : baseDiff
+    : 0;
+
+  let expressFare: number;
+  const breakdown: ExpressFareBreakdown = {
+    base: 0,
+    seasonalDiff,
+    nozomiAdditional: 0,
+    greenCharge: 0,
+    deduction530: 0,
+  };
+
+  if (!hasReservedOrGreen) {
+    // 全区間自由席
+    expressFare = fareEntry.free;
+    breakdown.base = fareEntry.free;
+  } else {
+    // 指定席ベース
+    breakdown.base = fareEntry.hikari_reserved;
+    expressFare = fareEntry.hikari_reserved + seasonalDiff;
+
+    // グリーン車計算
+    if (hasGreen) {
+      const greenResult = calculateGreenCharge(from, to, segments, configs);
+      breakdown.greenCharge = greenResult.greenCharge;
+      breakdown.deduction530 = greenResult.deduction530;
+      expressFare =
+        expressFare - greenResult.deduction530 + greenResult.greenCharge;
+    }
+
+    // のぞみ/みずほ加算
+    const nozomiAdd = calculateNozomiAdditional(from, to, segments, configs);
+    breakdown.nozomiAdditional = nozomiAdd;
+    expressFare += nozomiAdd;
+  }
+
+  const total = ticketFare + expressFare;
+  const gakuwariTotal = gakuwariTicketFare + expressFare;
 
   return {
     ticketFare,
-    studentFare,
+    gakuwariTicketFare,
     distance,
-    studentFareApplicable,
-    expressFareNozomi: result.nozomiFare,
-    expressFareOther: result.otherFare,
-    breakdown: {
-      hakataLevel1Split: false,
-      hakataLevel2Split: greenCrossesHakata,
-      sides: [result.side],
-    },
+    expressFare,
+    expressFareBreakdown: breakdown,
+    total,
+    gakuwariTotal,
   };
 }
 
-/**
- * グリーン車区間が博多をまたぐか判定
- */
-function doesGreenCrossHakata(
-  segments: JourneySegment[],
-  overallFrom: StationId,
-  overallTo: StationId,
-): boolean {
-  // 博多が区間に含まれていなければfalse
-  if (!new Route(overallFrom, overallTo).isHakataBetween) return false;
+/** レベル1分割（博多で完全分離） */
+function calculateLevel1Split(
+  from: StationId,
+  to: StationId,
+  segments: { from: StationId; to: StationId }[],
+  configs: SegmentConfig[],
+  baseDiff: number,
+  ticketFare: number,
+  gakuwariTicketFare: number,
+  distance: number,
+): ViaFareResult | null {
+  let fromIdx = getStationIndex(from);
+  let toIdx = getStationIndex(to);
+  const reversed = fromIdx > toIdx;
+  if (reversed) [fromIdx, toIdx] = [toIdx, fromIdx];
 
-  const hakataIdx = Route.HAKATA_INDEX;
+  const hakataId: StationId = "hakata";
 
-  // グリーン車区間の開始・終了インデックスを求める
-  let greenStart: number | null = null;
-  let greenEnd: number | null = null;
+  // 東海道・山陽側と九州側を分離
+  const tokaidoFrom = reversed ? hakataId : from;
+  const tokaidoTo = reversed ? to : hakataId;
+  const kyushuFrom = reversed ? from : hakataId;
+  const kyushuTo = reversed ? hakataId : to;
 
-  for (const seg of segments) {
-    if (seg.seatType === "green") {
-      const r = new Route(seg.fromId, seg.toId);
-      if (greenStart === null || r.lo < greenStart) greenStart = r.lo;
-      if (greenEnd === null || r.hi > greenEnd) greenEnd = r.hi;
-    }
-  }
+  const tokaidoEntry = getFareEntry(tokaidoFrom, tokaidoTo);
+  const kyushuEntry = getFareEntry(kyushuFrom, kyushuTo);
+  if (!tokaidoEntry || !kyushuEntry) return null;
 
-  if (greenStart === null || greenEnd === null) return false;
-  return greenStart < hakataIdx && greenEnd > hakataIdx;
-}
-
-/**
- * Level 1: 博多で完全分離して東海道・山陽側と九州側を独立計算
- */
-function calculateLevel1(
-  segments: JourneySegment[],
-  overallFrom: StationId,
-  overallTo: StationId,
-  date: Date,
-): {
-  nozomiFare: number | null;
-  otherFare: number;
-  sides: SideBreakdown[];
-} | null {
-  // セグメントを博多の前後で分割
-  const { tokaidoSanyoSegments, kyushuSegments } = splitSegmentsAtHakata(
-    segments,
-    overallFrom,
-    overallTo,
-  );
-
-  // 東京側から見た並び順で、東海道・山陽側は overallFrom ↔ 博多
-  // 九州側は 博多 ↔ overallTo
-  const overallRoute = new Route(overallFrom, overallTo);
-
-  let tokaidoSanyoFrom: StationId;
-  let tokaidoSanyoTo: StationId;
-  let kyushuFrom: StationId;
-  let kyushuTo: StationId;
-
-  if (overallRoute.isDownward) {
-    // 東京→鹿児島方向
-    tokaidoSanyoFrom = overallFrom;
-    tokaidoSanyoTo = "hakata";
-    kyushuFrom = "hakata";
-    kyushuTo = overallTo;
-  } else {
-    // 鹿児島→東京方向
-    tokaidoSanyoFrom = "hakata";
-    tokaidoSanyoTo = overallTo;
-    kyushuFrom = overallFrom;
-    kyushuTo = "hakata";
-  }
-
-  // 東海道・山陽側
-  const tsResult = calculateOneSide(
-    tokaidoSanyoSegments,
-    tokaidoSanyoFrom,
-    tokaidoSanyoTo,
-    date,
-    false, // Level 1ではgreen_chargeの博多分割は各サイド内で完結
-  );
-  if (!tsResult) return null;
-
-  // 九州側
-  const kResult = calculateOneSide(
-    kyushuSegments,
-    kyushuFrom,
-    kyushuTo,
-    date,
-    false,
-  );
-  if (!kResult) return null;
-
-  // 合算
-  const otherFare = tsResult.otherFare + kResult.otherFare;
-  let nozomiFare: number | null = null;
-
-  // のぞみ料金は両サイドで最も高い組み合わせ
-  if (tsResult.nozomiFare !== null || kResult.nozomiFare !== null) {
-    const tsFare = tsResult.nozomiFare ?? tsResult.otherFare;
-    const kFare = kResult.nozomiFare ?? kResult.otherFare;
-    nozomiFare = tsFare + kFare;
-  }
-
-  return {
-    nozomiFare,
-    otherFare,
-    sides: [tsResult.side, kResult.side],
-  };
-}
-
-/**
- * セグメントを博多の前後で分割
- */
-function splitSegmentsAtHakata(
-  segments: JourneySegment[],
-  overallFrom: StationId,
-  overallTo: StationId,
-): {
-  tokaidoSanyoSegments: JourneySegment[];
-  kyushuSegments: JourneySegment[];
-} {
-  const hakataIdx = Route.HAKATA_INDEX;
-  const overallRoute = new Route(overallFrom, overallTo);
-  const goingDown = overallRoute.isDownward; // 東京→鹿児島方向
-
-  const tokaidoSanyoSegments: JourneySegment[] = [];
-  const kyushuSegments: JourneySegment[] = [];
-
-  for (const seg of segments) {
-    const segRoute = new Route(seg.fromId, seg.toId);
-    const segLo = segRoute.lo;
-    const segHi = segRoute.hi;
-
-    if (segHi <= hakataIdx) {
-      // 博多以前（東海道・山陽側）
-      tokaidoSanyoSegments.push(seg);
-    } else if (segLo >= hakataIdx) {
-      // 博多以降（九州側）
-      kyushuSegments.push(seg);
-    } else {
-      // 博多をまたぐセグメント → 分割
-      if (goingDown) {
-        tokaidoSanyoSegments.push({
-          ...seg,
-          toId: "hakata",
-        });
-        kyushuSegments.push({
-          ...seg,
-          fromId: "hakata",
-        });
-      } else {
-        kyushuSegments.push({
-          ...seg,
-          toId: "hakata",
-        });
-        tokaidoSanyoSegments.push({
-          ...seg,
-          fromId: "hakata",
-        });
-      }
-    }
-  }
-
-  return { tokaidoSanyoSegments, kyushuSegments };
-}
-
-/**
- * 1つのサイド（全区間 or Level1分離後の各サイド）の特急料金を計算
- *
- * @param segments このサイドのセグメント
- * @param sideFrom このサイドの出発駅
- * @param sideTo このサイドの到着駅
- * @param date 移動日
- * @param greenSplitAtHakata Level 2でgreen_chargeを博多分割するか
- */
-export function calculateOneSide(
-  segments: JourneySegment[],
-  sideFrom: StationId,
-  sideTo: StationId,
-  date: Date,
-  greenSplitAtHakata: boolean,
-): {
-  nozomiFare: number | null;
-  otherFare: number;
-  side: SideBreakdown;
-} | null {
-  if (segments.length === 0) return null;
-
-  const fareData = getAllFares(sideFrom, sideTo);
-  if (!fareData) return null;
-
-  // 全区間自由席かどうか
-  const allFree = segments.every((s) => s.seatType === "free");
-
-  // グリーン車区間があるか
-  const hasGreen = segments.some((s) => s.seatType === "green");
-
-  // 季節加算（通し区間で判定）
-  const seasonalDiff = allFree
-    ? 0
-    : calculateSeasonalDiffForSide(sideFrom, sideTo, date);
-
-  // ベース特急料金
-  let baseFare: number;
-  if (allFree) {
-    baseFare = fareData.free ?? 0;
-  } else {
-    baseFare = fareData.hikari_reserved ?? 0;
-  }
-
-  // グリーン調整額
-  let greenAdjustment = 0;
-  if (hasGreen) {
-    greenAdjustment = calculateGreenAdjustment(
-      segments,
-      sideFrom,
-      sideTo,
-      greenSplitAtHakata,
-    );
-  }
-
-  // のぞみ加算
-  const nozomiResult = calculateNozomiSurcharge(segments, sideFrom, sideTo);
-
-  // 区間詳細を作成
-  const segmentDetails: SegmentDetail[] = segments.map((seg) => {
-    const segFareData = getAllFares(seg.fromId, seg.toId);
-    return {
-      fromId: seg.fromId,
-      toId: seg.toId,
-      seatType: seg.seatType,
-      trainType: seg.trainType,
-      nozomiAdditional: segFareData?.nozomi_additional ?? null,
-    };
+  // 各側の区間とコンフィグを分割
+  const hakataSegIdx = segments.findIndex((s) => {
+    const fi = getStationIndex(s.from);
+    const ti = getStationIndex(s.to);
+    const minI = Math.min(fi, ti);
+    const maxI = Math.max(fi, ti);
+    return minI < HAKATA_INDEX && maxI > HAKATA_INDEX;
   });
 
-  // 特急料金を算出
-  // のぞみなし版
-  let expressFareOther: number;
-  if (allFree) {
-    expressFareOther = baseFare;
-  } else if (hasGreen) {
-    // 指定席特急料金 - 530 + green_charge + 季節加算
-    expressFareOther = baseFare - 530 + greenAdjustment + seasonalDiff;
-  } else {
-    expressFareOther = baseFare + seasonalDiff;
-  }
-
-  // のぞみあり版
-  let expressFareNozomi: number | null = null;
-  if (nozomiResult.surcharge > 0 || nozomiResult.hasSomeNozomi) {
-    expressFareNozomi = expressFareOther + nozomiResult.surcharge;
-  }
-
-  const side: SideBreakdown = {
-    fromId: sideFrom,
-    toId: sideTo,
-    baseFare,
-    seasonalDiff,
-    greenAdjustment: hasGreen ? greenAdjustment - 530 : 0, // display value: -530 + green_charge
-    nozomiSurcharge: nozomiResult.surcharge,
-    nozomiMethod: nozomiResult.method,
-    nozomiIndividualSum: nozomiResult.individualSum,
-    nozomiThroughValue: nozomiResult.throughValue,
-    allFree,
-    segments: segmentDetails,
-  };
-
-  return {
-    nozomiFare: expressFareNozomi,
-    otherFare: expressFareOther,
-    side,
-  };
-}
-
-/**
- * サイドの季節加算を計算
- */
-export function calculateSeasonalDiffForSide(
-  fromId: StationId,
-  toId: StationId,
-  date: Date,
-): number {
-  const season = getSeason(date);
-  let diff = SEASON_DIFF[season];
-  if (new Route(fromId, toId).isCrossRegion) {
-    diff *= 2;
-  }
-  return diff;
-}
-
-/**
- * グリーン料金調整額を計算
- * green_chargeの通し計算（博多分割対応含む）
- * 戻り値: green_charge の合計値（-530の分は呼び出し元で適用）
- */
-function calculateGreenAdjustment(
-  segments: JourneySegment[],
-  _sideFrom: StationId,
-  _sideTo: StationId,
-  greenSplitAtHakata: boolean,
-): number {
-  // グリーン車区間の最初と最後の駅を特定
-  const greenSegments = segments.filter((s) => s.seatType === "green");
-  if (greenSegments.length === 0) return 0;
-
-  // 地理的順序でのグリーン区間の始点・終点を求める
-  let greenFromIdx = Infinity;
-  let greenToIdx = -Infinity;
-
-  for (const seg of greenSegments) {
-    const r = new Route(seg.fromId, seg.toId);
-    if (r.lo < greenFromIdx) greenFromIdx = r.lo;
-    if (r.hi > greenToIdx) greenToIdx = r.hi;
-  }
-
-  // Get actual station IDs from indices
-  if (greenFromIdx >= STATIONS.length || greenToIdx >= STATIONS.length)
-    return 0;
-  const greenFromId = STATIONS[greenFromIdx].id;
-  const greenToId = STATIONS[greenToIdx].id;
-
-  if (greenSplitAtHakata) {
-    // Level 2: green_chargeを博多で分割
-    const hakataIdx = Route.HAKATA_INDEX;
-
-    if (greenFromIdx < hakataIdx && greenToIdx > hakataIdx) {
-      // 博多をまたぐ → 分割
-      const gc1Data = getAllFares(greenFromId, "hakata");
-      const gc2Data = getAllFares("hakata", greenToId);
-      const gc1 = gc1Data?.green_charge ?? 0;
-      const gc2 = gc2Data?.green_charge ?? 0;
-      return gc1 + gc2;
-    }
-  }
-
-  // 通常: 通し計算
-  const gcData = getAllFares(greenFromId, greenToId);
-  return gcData?.green_charge ?? 0;
-}
-
-/**
- * のぞみ/みずほ加算を計算
- * 個別合算 vs 通しの安い方を選択
- */
-function calculateNozomiSurcharge(
-  segments: JourneySegment[],
-  sideFrom: StationId,
-  sideTo: StationId,
-): {
-  surcharge: number;
-  method: NozomiSurchargeMethod | null;
-  individualSum: number | null;
-  throughValue: number | null;
-  hasSomeNozomi: boolean;
-} {
-  // のぞみ/みずほに乗車するセグメントを特定
-  const nozomiSegments = segments.filter(
-    (s) => isNozomiMizuho(s.trainType) && s.seatType !== "free", // 自由席にはのぞみ加算なし
+  // 博多が経由駅に含まれている場合
+  const hakataViaIdx = segments.findIndex(
+    (s) => s.from === "hakata" || s.to === "hakata",
   );
 
-  if (nozomiSegments.length === 0) {
-    // 列車未指定のセグメント（trainType === null かつ seatType !== "free"）がある場合
-    // のぞみ乗車の可能性があるのでhasSomeNozomiをtrueにする必要がある
-    const hasUnspecifiedNonFree = segments.some(
-      (s) => s.trainType === null && s.seatType !== "free",
+  let splitIdx: number;
+  if (hakataSegIdx >= 0) {
+    splitIdx = hakataSegIdx;
+  } else if (hakataViaIdx >= 0) {
+    // 博多が区間の端の場合
+    const seg = segments[hakataViaIdx];
+    splitIdx = seg.to === "hakata" ? hakataViaIdx + 1 : hakataViaIdx;
+  } else {
+    splitIdx = segments.length; // fallback
+  }
+
+  const tokaidoConfigs = configs.slice(0, splitIdx || 1);
+  const kyushuConfigs = configs.slice(splitIdx || 1);
+
+  // 各側の計算
+  const tokaidoHasReservedOrGreen = tokaidoConfigs.some(
+    (c) => c.seatType === "reserved" || c.seatType === "green",
+  );
+  const kyushuHasReservedOrGreen = kyushuConfigs.some(
+    (c) => c.seatType === "reserved" || c.seatType === "green",
+  );
+
+  const tokaidoSeasonalDiff = tokaidoHasReservedOrGreen ? baseDiff : 0;
+  const kyushuSeasonalDiff = kyushuHasReservedOrGreen ? baseDiff : 0;
+
+  let tokaidoExpress: number;
+  if (!tokaidoHasReservedOrGreen) {
+    tokaidoExpress = tokaidoEntry.free;
+  } else {
+    tokaidoExpress = tokaidoEntry.hikari_reserved + tokaidoSeasonalDiff;
+    if (tokaidoConfigs.some((c) => c.seatType === "green")) {
+      const gc = tokaidoEntry.green_charge ?? 0;
+      tokaidoExpress = tokaidoExpress - 530 + gc;
+    }
+    // のぞみ加算（東海道・山陽側）
+    const nozomiSegs = segments.slice(0, splitIdx || 1);
+    const nozomiConfigs = tokaidoConfigs;
+    const nozomiAdd = calculateNozomiAdditionalForSide(
+      nozomiSegs,
+      nozomiConfigs,
     );
-
-    if (hasUnspecifiedNonFree) {
-      // 列車未指定の場合: 通し区間全体ののぞみ加算を計算
-      const fareData = getAllFares(sideFrom, sideTo);
-      const throughNozomi = fareData?.nozomi_additional ?? null;
-      if (throughNozomi !== null && throughNozomi > 0) {
-        return {
-          surcharge: throughNozomi,
-          method: "through",
-          individualSum: null,
-          throughValue: throughNozomi,
-          hasSomeNozomi: true,
-        };
-      }
-    }
-
-    return {
-      surcharge: 0,
-      method: null,
-      individualSum: null,
-      throughValue: null,
-      hasSomeNozomi: false,
-    };
+    tokaidoExpress += nozomiAdd;
   }
 
-  // 方式A: 個別合算
-  let individualSum = 0;
-  for (const seg of nozomiSegments) {
-    const segFareData = getAllFares(seg.fromId, seg.toId);
-    const additional = segFareData?.nozomi_additional;
-    if (additional !== null && additional !== undefined) {
-      individualSum += additional;
+  let kyushuExpress: number;
+  if (!kyushuHasReservedOrGreen) {
+    kyushuExpress = kyushuEntry.free;
+  } else {
+    kyushuExpress = kyushuEntry.hikari_reserved + kyushuSeasonalDiff;
+    if (kyushuConfigs.some((c) => c.seatType === "green")) {
+      const gc = kyushuEntry.green_charge ?? 0;
+      kyushuExpress = kyushuExpress - 530 + gc;
     }
   }
 
-  // 方式B: 通し（最初ののぞみ乗車駅～最後の降車駅）
-  // 地理的順序で最初と最後を特定
-  let nozomiStartIdx = Infinity;
-  let nozomiEndIdx = -Infinity;
-  for (const seg of nozomiSegments) {
-    const r = new Route(seg.fromId, seg.toId);
-    if (r.lo < nozomiStartIdx) nozomiStartIdx = r.lo;
-    if (r.hi > nozomiEndIdx) nozomiEndIdx = r.hi;
-  }
+  const expressFare = tokaidoExpress + kyushuExpress;
+  const totalSeasonalDiff = tokaidoSeasonalDiff + kyushuSeasonalDiff;
 
-  const nozomiStartId =
-    nozomiStartIdx < STATIONS.length ? STATIONS[nozomiStartIdx].id : null;
-  const nozomiEndId =
-    nozomiEndIdx < STATIONS.length ? STATIONS[nozomiEndIdx].id : null;
-
-  let throughValue = 0;
-  if (nozomiStartId && nozomiEndId) {
-    const throughData = getAllFares(nozomiStartId, nozomiEndId);
-    throughValue = throughData?.nozomi_additional ?? 0;
-  }
-
-  // 安い方を選択
-  const surcharge = Math.min(individualSum, throughValue);
-  const method: NozomiSurchargeMethod =
-    individualSum <= throughValue ? "individual_sum" : "through";
+  const total = ticketFare + expressFare;
+  const gakuwariTotal = gakuwariTicketFare + expressFare;
 
   return {
-    surcharge,
-    method,
-    individualSum,
-    throughValue,
-    hasSomeNozomi: true,
+    ticketFare,
+    gakuwariTicketFare,
+    distance,
+    expressFare,
+    expressFareBreakdown: {
+      base: tokaidoExpress + kyushuExpress - totalSeasonalDiff,
+      seasonalDiff: totalSeasonalDiff,
+      nozomiAdditional: 0,
+      greenCharge: 0,
+      deduction530: 0,
+    },
+    total,
+    gakuwariTotal,
   };
+}
+
+/** グリーン料金の計算（通しまたは博多分割Level2） */
+function calculateGreenCharge(
+  _from: StationId,
+  _to: StationId,
+  segments: { from: StationId; to: StationId }[],
+  configs: SegmentConfig[],
+): { greenCharge: number; deduction530: number } {
+  // グリーン車区間を特定
+  let firstGreenIdx = -1;
+  let lastGreenIdx = -1;
+  for (let i = 0; i < configs.length; i++) {
+    if (configs[i].seatType === "green") {
+      if (firstGreenIdx === -1) firstGreenIdx = i;
+      lastGreenIdx = i;
+    }
+  }
+
+  if (firstGreenIdx === -1) return { greenCharge: 0, deduction530: 0 };
+
+  const greenFrom = segments[firstGreenIdx].from;
+  const greenTo = segments[lastGreenIdx].to;
+
+  // 博多をまたぐ場合はLevel2分割
+  if (crossesHakata(greenFrom, greenTo)) {
+    const gc1 = getFareEntry(greenFrom, "hakata")?.green_charge ?? 0;
+    const gc2 = getFareEntry("hakata", greenTo)?.green_charge ?? 0;
+    return { greenCharge: gc1 + gc2, deduction530: 530 };
+  }
+
+  const greenEntry = getFareEntry(greenFrom, greenTo);
+  return {
+    greenCharge: greenEntry?.green_charge ?? 0,
+    deduction530: 530,
+  };
+}
+
+/** のぞみ/みずほ加算の最適計算（東京〜博多間） */
+function calculateNozomiAdditional(
+  _from: StationId,
+  _to: StationId,
+  segments: { from: StationId; to: StationId }[],
+  configs: SegmentConfig[],
+): number {
+  // のぞみ/みずほに乗車する区間を特定
+  const nozomiSegments: { from: StationId; to: StationId }[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const train = configs[i]?.trainType;
+    if (train === "nozomi" || train === "mizuho") {
+      nozomiSegments.push(segments[i]);
+    }
+  }
+
+  if (nozomiSegments.length === 0) return 0;
+
+  // 方法A: 各区間の加算額の合計
+  let sumIndividual = 0;
+  for (const seg of nozomiSegments) {
+    const entry = getFareEntry(seg.from, seg.to);
+    if (entry?.nozomi_additional != null) {
+      sumIndividual += entry.nozomi_additional;
+    }
+  }
+
+  // 方法B: 最初→最後を通しで計算
+  const throughFrom = nozomiSegments[0].from;
+  const throughTo = nozomiSegments[nozomiSegments.length - 1].to;
+  const throughEntry = getFareEntry(throughFrom, throughTo);
+  const throughAdditional = throughEntry?.nozomi_additional ?? Infinity;
+
+  return Math.min(sumIndividual, throughAdditional);
+}
+
+/** 片側ののぞみ加算計算 */
+function calculateNozomiAdditionalForSide(
+  segments: { from: StationId; to: StationId }[],
+  configs: SegmentConfig[],
+): number {
+  return calculateNozomiAdditional(
+    segments[0]?.from ?? "tokyo",
+    segments[segments.length - 1]?.to ?? "tokyo",
+    segments,
+    configs,
+  );
 }

@@ -1,37 +1,24 @@
-import TrainLabel from "./TrainLabel";
+import { cn } from "@/lib/utils";
+import { formatYen } from "./ui/format";
 
-type Props = {
-  label: string;
-  value: number | null;
-  note?: string;
+interface FareRowProps {
+  label: React.ReactNode;
+  fare: number | null;
   italic?: boolean;
-};
-
-function formatFare(
-  n: number | null,
-  unit?: string,
-  withAsterisk?: boolean,
-): string {
-  if (n === null) return "-";
-  if (unit === "km") return `${n.toFixed(1)}km`;
-  const formatted = `${n.toLocaleString()}円`;
-  return withAsterisk ? `*${formatted}` : formatted;
 }
 
-function FareRow({ label, value, note, italic }: Props) {
+export default function FareRow({ label, fare, italic }: FareRowProps) {
   return (
-    <tr>
-      <td>
-        <TrainLabel label={label} />
-        {note && note !== "km" && (
-          <span className="fare-table__note"> ({note})</span>
+    <div className="flex items-center justify-between gap-2 border-b border-gray-100 py-1.5 last:border-b-0">
+      <span className="text-sm text-gray-600">{label}</span>
+      <span
+        className={cn(
+          "whitespace-nowrap text-right font-mono text-sm font-bold text-indigo-900",
+          italic && "italic",
         )}
-      </td>
-      <td className="fare-table__value">
-        {formatFare(value, note === "km" ? "km" : undefined, italic)}
-      </td>
-    </tr>
+      >
+        {formatYen(fare)}
+      </span>
+    </div>
   );
 }
-
-export default FareRow;

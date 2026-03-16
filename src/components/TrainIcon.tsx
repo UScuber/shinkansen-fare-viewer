@@ -1,25 +1,23 @@
-import { TRAIN_TAG_MAP, isTrainTag } from "./trainTagMap";
+import type { TrainType } from "../data/types";
+import { TRAIN_TAGS } from "../data/trainTags";
 
-type TrainIconProps = {
-  tag: string;
-};
+interface TrainIconProps {
+  trainType: TrainType;
+}
 
-function TrainIcon({ tag }: TrainIconProps) {
-  if (!isTrainTag(tag)) {
-    return <>{`<${tag}>`}</>;
-  }
-
-  const theme = TRAIN_TAG_MAP[tag];
+export default function TrainIcon({ trainType }: TrainIconProps) {
+  const tag = TRAIN_TAGS[trainType];
+  const initial = tag.name.charAt(0);
   return (
     <span
-      className={`train-icon${theme.textColor === "dark" ? " train-icon--dark" : ""}`}
-      style={{ backgroundColor: theme.color }}
-      title={theme.name}
-      aria-label={theme.name}
+      className="mr-0.5 inline-flex size-[22px] items-center justify-center rounded align-middle text-[0.7rem] font-bold"
+      style={{
+        backgroundColor: tag.color,
+        color: tag.textLight ? "#fff" : "#333",
+      }}
+      title={tag.name}
     >
-      {theme.short}
+      {initial}
     </span>
   );
 }
-
-export default TrainIcon;

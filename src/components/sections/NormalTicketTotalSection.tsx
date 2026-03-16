@@ -1,112 +1,107 @@
+import type { CalculatedFares, FareFilter } from "../../data/types";
 import FareSection from "../FareSection";
 import TrainLabel from "../TrainLabel";
 import { formatYen } from "../ui/format";
-import { NOZOMI_MIZUHO, NON_NOZOMI_MIZUHO } from "../ui/trainLabels";
-import type { CalculatedFares } from "../../data/calculator";
-import type { FareFilter } from "../../data/types";
-import { isProductVisible, type ProductId } from "../../data/fareFilter";
+import { isProductVisible } from "../../data/fareFilter";
 
-type Props = {
+interface NormalTicketTotalSectionProps {
   fares: CalculatedFares;
   useGakuwari: boolean;
-  filter?: FareFilter | null;
-};
+  filter: FareFilter;
+}
 
-function NormalTicketTotalSection({ fares, useGakuwari, filter }: Props) {
-  const ticketFare = useGakuwari ? fares.studentFare : fares.ticketFare;
+interface TotalRow {
+  productId: string;
+  label: React.ReactNode;
+  ticketFare: number;
+  expressFare: number;
+}
 
-  if (ticketFare === null) return null;
-
-  const nozomiMizuho = NOZOMI_MIZUHO;
-  const nonNozomiMizuho = NON_NOZOMI_MIZUHO;
-
-  const f = filter ?? null;
-
-  type TotalRow = {
-    key: string;
-    label: string;
-    expressFare: number | null;
-    productId: ProductId;
-    extraCheck?: boolean;
-  };
+export default function NormalTicketTotalSection({
+  fares,
+  useGakuwari,
+  filter,
+}: NormalTicketTotalSectionProps) {
+  const ticket = useGakuwari ? fares.gakuwariTicketFare : fares.ticketFare;
 
   const rows: TotalRow[] = [
     {
-      key: "free",
+      productId: "total_free",
       label: "自由席",
-      expressFare: fares.expressFree,
-      productId: "expressFree",
+      ticketFare: ticket,
+      expressFare: fares.free,
     },
     {
-      key: "otherReserved",
-      label: `${nonNozomiMizuho}指定席`,
-      expressFare: fares.expressOtherReserved,
-      productId: "expressOtherReserved",
-    },
-    {
-      key: "nozomiReserved",
-      label: `${nozomiMizuho}指定席`,
-      expressFare: fares.expressNozomiMizuhoReserved,
-      productId: "expressNozomiMizuhoReserved",
-      extraCheck: fares.expressNozomiMizuhoReserved !== null,
-    },
-    {
-      key: "otherGreen",
-      label: `${nonNozomiMizuho}グリーン車`,
-      expressFare: fares.expressOtherGreen,
-      productId: "expressOtherGreen",
-    },
-    {
-      key: "nozomiGreen",
-      label: `${nozomiMizuho}グリーン車`,
-      expressFare: fares.expressNozomiMizuhoGreen,
-      productId: "expressNozomiMizuhoGreen",
-      extraCheck: fares.expressNozomiMizuhoGreen !== null,
+      productId: "total_hikari_reserved",
+      label: (
+        <TrainLabel
+          trainTypes={["hikari", "kodama", "sakura", "tsubame"]}
+          suffix="指定席"
+        />
+      ),
+      ticketFare: ticket,
+      expressFare: fares.hikariReserved,
     },
   ];
 
-  const visibleRows = rows.filter(
-    (r) =>
-      r.expressFare !== null &&
-      (r.extraCheck === undefined || r.extraCheck) &&
-      isProductVisible(r.productId, f),
-  );
+  if (fares.nozomiReserved != null) {
+    rows.push({
+      productId: "total_nozomi_reserved",
+      label: <TrainLabel trainTypes={["nozomi", "mizuho"]} suffix="指定席" />,
+      ticketFare: ticket,
+      expressFare: fares.nozomiReserved,
+    });
+  }
 
+  rows.push({
+    productId: "total_hikari_green",
+    label: (
+      <TrainLabel
+        trainTypes={["hikari", "kodama", "sakura", "tsubame"]}
+        suffix="グリーン車"
+      />
+    ),
+    ticketFare: ticket,
+    expressFare: fares.hikariGreen,
+  });
+
+  if (fares.nozomiGreen != null) {
+    rows.push({
+      productId: "total_nozomi_green",
+      label: (
+        <TrainLabel trainTypes={["nozomi", "mizuho"]} suffix="グリーン車" />
+      ),
+      ticketFare: ticket,
+      expressFare: fares.nozomiGreen,
+    });
+  }
+
+  const visibleRows = rows.filter((r) => isProductVisible(r.productId, filter));
   if (visibleRows.length === 0) return null;
 
   return (
     <FareSection title="通常きっぷ 合計（乗車券＋特急券）">
-      <div className="normal-total">
-        {visibleRows.map((row) => {
-          const total =
-            row.expressFare !== null ? ticketFare + row.expressFare : null;
-          return (
-            <div key={row.key} className="normal-total__item">
-              <div className="normal-total__label">
-                【<TrainLabel label={row.label} />】
-              </div>
-              <div className="normal-total__calc">
-                <span className="normal-total__breakdown">
-                  乗車券 {formatYen(ticketFare)}
-                  {useGakuwari && (
-                    <span className="normal-total__gakuwari-badge">学割</span>
-                  )}
-                  {" + "}
-                  {row.key === "free"
-                    ? "自由席特急券"
-                    : row.key.includes("Green")
-                      ? "グリーン車特急券"
-                      : "指定席特急券"}{" "}
-                  {formatYen(row.expressFare)}
-                </span>
-                <span className="normal-total__total">{formatYen(total)}</span>
-              </div>
+      {visibleRows.map((row) => {
+        const total = row.ticketFare + row.expressFare;
+        return (
+          <div
+            key={row.productId}
+            className="border-b border-gray-100 py-2 last:border-b-0"
+          >
+            <div className="mb-1 text-sm text-gray-600">{row.label}</div>
+            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-xs text-gray-400">
+                {useGakuwari ? "乗車券(学割) " : "乗車券 "}
+                {formatYen(row.ticketFare)} + 特急券{" "}
+                {formatYen(row.expressFare)}
+              </span>
+              <span className="whitespace-nowrap font-mono text-sm font-bold text-indigo-900">
+                {formatYen(total)}
+              </span>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </FareSection>
   );
 }
-
-export default NormalTicketTotalSection;

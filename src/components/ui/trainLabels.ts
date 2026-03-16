@@ -1,6 +1,17 @@
+import type { TrainType } from "../../data/types";
 import { TRAIN_TAGS } from "../../data/trainTags";
 
-export const NOZOMI_MIZUHO = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}`;
-export const NON_NOZOMI_MIZUHO = `${TRAIN_TAGS.kodama}${TRAIN_TAGS.hikari}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
-export const NOZOMI_MIZUHO_SAKURA_TSUBAME = `${TRAIN_TAGS.nozomi}${TRAIN_TAGS.mizuho}${TRAIN_TAGS.sakura}${TRAIN_TAGS.tsubame}`;
-export const HIKARI_KODAMA = `${TRAIN_TAGS.hikari}${TRAIN_TAGS.kodama}`;
+/** 列車名を取得 */
+export function getTrainName(trainType: TrainType): string {
+  return TRAIN_TAGS[trainType].name;
+}
+
+/** 列車カラーを取得 */
+export function getTrainColor(trainType: TrainType): string {
+  return TRAIN_TAGS[trainType].color;
+}
+
+/** 列車テキストが明色かどうか */
+export function isTrainTextLight(trainType: TrainType): boolean {
+  return TRAIN_TAGS[trainType].textLight;
+}

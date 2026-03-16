@@ -1,79 +1,56 @@
+import type { CalculatedFares, FareFilter } from "../../data/types";
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
-import FareTableView from "../ui/FareTableView";
-import type { CalculatedFares } from "../../data/calculator";
-import type { FareFilter } from "../../data/types";
 import { isProductVisible } from "../../data/fareFilter";
-import { TRAIN_TAGS } from "../../data/trainTags";
-import platKodamaConfig from "../../data/plat_kodama_config.json";
+import { getPlatKodamaValidUntil } from "../../data/calendar";
 
-type Props = {
+interface PlatKodamaSectionProps {
   fares: CalculatedFares;
-  date: Date;
-  filter?: FareFilter | null;
-};
+  filter: FareFilter;
+}
 
-const PRICE_CLASSES = ["A", "B", "C", "D"] as const;
-
-function PlatKodamaSection({ fares, date, filter }: Props) {
-  const priceClass = fares.platKodamaPriceClass;
-  const validUntil = new Date(platKodamaConfig.valid_until);
-  const isExpired = date > validUntil;
-
-  const validUntilStr = validUntil.toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const note = `※ ${validUntilStr}までの料金です。ぷらっとこだまの旅行代金は随時変更される可能性があります`;
-
-  const f = filter ?? null;
-  const showReserved = isProductVisible("platKodamaReserved", f);
-  const showGreen = isProductVisible("platKodamaGreen", f);
-
-  if (!showReserved && !showGreen) {
+export default function PlatKodamaSection({
+  fares,
+  filter,
+}: PlatKodamaSectionProps) {
+  if (fares.isExcludedDate) return null;
+  if (fares.platKodamaReserved == null && fares.platKodamaGreen == null)
     return null;
+
+  const rows: { id: string; label: string; fare: number | null }[] = [];
+
+  if (fares.platKodamaReserved != null) {
+    rows.push({
+      id: "plat_kodama_reserved",
+      label: `${fares.platKodamaLabel} 普通車`,
+      fare: fares.platKodamaReserved,
+    });
   }
 
-  const reservedKeys = {
-    A: fares.platKodamaReservedA,
-    B: fares.platKodamaReservedB,
-    C: fares.platKodamaReservedC,
-    D: fares.platKodamaReservedD,
-  } as const;
+  if (fares.platKodamaGreen != null) {
+    rows.push({
+      id: "plat_kodama_green",
+      label: `${fares.platKodamaLabel} グリーン車`,
+      fare: fares.platKodamaGreen,
+    });
+  }
 
-  const greenKeys = {
-    A: fares.platKodamaGreenA,
-    B: fares.platKodamaGreenB,
-    C: fares.platKodamaGreenC,
-    D: fares.platKodamaGreenD,
-  } as const;
+  const visible = rows.filter((r) => isProductVisible(r.id, filter));
+  if (visible.length === 0) return null;
 
-  const seatConfigs = [
-    { show: showReserved, suffix: "普通車", values: reservedKeys },
-    { show: showGreen, suffix: "グリーン車", values: greenKeys },
-  ];
+  const validUntil = getPlatKodamaValidUntil();
+  const note = `※${validUntil.replace("-", "年").replace("-", "月")}日乗車分まで`;
 
   return (
     <FareSection title="ぷらっとこだま" note={note}>
-      <FareTableView>
-        {seatConfigs.flatMap((seat) =>
-          seat.show
-            ? PRICE_CLASSES.filter(
-                (cls) => priceClass === null || priceClass === cls,
-              ).map((cls) => (
-                <FareRow
-                  key={`${seat.suffix}-${cls}`}
-                  label={`${TRAIN_TAGS.kodama}${cls}料金 ${seat.suffix}`}
-                  value={seat.values[cls]}
-                  italic={isExpired}
-                />
-              ))
-            : [],
-        )}
-      </FareTableView>
+      {visible.map((r) => (
+        <FareRow
+          key={r.id}
+          label={r.label}
+          fare={r.fare}
+          italic={fares.platKodamaAfterValidUntil}
+        />
+      ))}
     </FareSection>
   );
 }
-
-export default PlatKodamaSection;

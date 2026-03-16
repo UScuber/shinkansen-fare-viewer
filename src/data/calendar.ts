@@ -1,74 +1,114 @@
-/**
- * 繁忙期カレンダー
- *
- * season:
- *   'peak2'   = 最繁忙期 (+400円)
- *   'peak1'   = 繁忙期   (+200円)
- *   'normal'  = 通常期   (基準)
- *   'off'     = 閑散期   (-200円)
- */
+import type { SeasonType } from "./types";
+import seasonRangesJson from "./season_ranges.json";
+import platKodamaConfigJson from "./plat_kodama_config.json";
 
-import SEASON_RANGES_DATA from "./season_ranges.json";
-
-export type Season = "peak2" | "peak1" | "normal" | "off";
-
-export const SEASON_DIFF: Record<Season, number> = {
-  peak2: 400,
-  peak1: 200,
-  normal: 0,
-  off: -200,
-};
-
-/**
- * ローカル日付を "YYYY-MM-DD" 形式の文字列に変換する。
- * toISOString() はUTCに変換するため、JST等では日付がずれる問題を回避する。
- */
-function toLocalDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+interface SeasonRange {
+  start: string;
+  end: string;
+  season: "off" | "peak1" | "peak2";
 }
 
-// 日付範囲 [start, end] を含む全日付を列挙
-function rangeToSeasons(
-  ranges: { start: string; end: string; season: Season }[],
-): Map<string, Season> {
-  const map = new Map<string, Season>();
-  for (const r of ranges) {
-    // "T00:00:00" を付与してローカル時間として解釈させる
-    // （日付のみの文字列はUTCとして解釈されるため）
-    const start = new Date(r.start + "T00:00:00");
-    const end = new Date(r.end + "T00:00:00");
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      map.set(toLocalDateKey(d), r.season);
+const seasonRanges: SeasonRange[] = seasonRangesJson as SeasonRange[];
+
+/** 日付文字列（YYYY-MM-DD）から季節を判定 */
+export function getSeason(dateStr: string): SeasonType {
+  for (const range of seasonRanges) {
+    if (dateStr >= range.start && dateStr <= range.end) {
+      return range.season;
     }
   }
-  return map;
+  return "normal";
 }
 
-// JSONファイルから読み込んだ繁忙期カレンダー（日付範囲）
-// 通常期以外の日程を定義。未定義日は通常期として扱う。
-const SEASON_RANGES: { start: string; end: string; season: Season }[] =
-  SEASON_RANGES_DATA as {
-    start: string;
-    end: string;
-    season: Season;
-  }[];
-
-// ビルド時に展開（ランタイムでのMap生成）
-let _seasonMap: Map<string, Season> | null = null;
-function getSeasonMap(): Map<string, Season> {
-  if (!_seasonMap) {
-    _seasonMap = rangeToSeasons(SEASON_RANGES);
+/** 季節に応じた加算額（基本値） */
+export function getSeasonalBaseDiff(season: SeasonType): number {
+  switch (season) {
+    case "off":
+      return -200;
+    case "normal":
+      return 0;
+    case "peak1":
+      return 200;
+    case "peak2":
+      return 400;
   }
-  return _seasonMap;
 }
 
-/**
- * 指定日の繁忙期区分を返す
- */
-export function getSeason(date: Date): Season {
-  const key = toLocalDateKey(date);
-  return getSeasonMap().get(key) ?? "normal";
+/** 季節バッジ情報 */
+export function getSeasonLabel(season: SeasonType): {
+  label: string;
+  color: string;
+  diff: string;
+} {
+  switch (season) {
+    case "off":
+      return { label: "閑散期", color: "#4caf50", diff: "-200円" };
+    case "normal":
+      return { label: "通常期", color: "#2196f3", diff: "±0円" };
+    case "peak1":
+      return { label: "繁忙期", color: "#ff9800", diff: "+200円" };
+    case "peak2":
+      return { label: "最繁忙期", color: "#f44336", diff: "+400円" };
+  }
+}
+
+/** 設定除外日の判定（早特・ぷらっとこだまが利用不可） */
+export function isExcludedDate(dateStr: string): boolean {
+  const excluded = [
+    { start: "2026-04-24", end: "2026-05-06" }, // GW
+    { start: "2026-08-07", end: "2026-08-16" }, // お盆
+    { start: "2026-09-18", end: "2026-09-23" }, // SW
+    { start: "2026-12-25", end: "2027-01-05" }, // 年末年始
+  ];
+  return excluded.some((p) => dateStr >= p.start && dateStr <= p.end);
+}
+
+/** ぷらっとこだまの料金区分を取得 */
+export function getPlatKodamaGrade(dateStr: string): "a" | "b" | "c" | "d" {
+  const config = platKodamaConfigJson;
+
+  // 繁忙期チェック
+  for (const period of config.peak_periods) {
+    if (dateStr >= period.start && dateStr <= period.end) {
+      return "d";
+    }
+  }
+
+  const date = new Date(dateStr + "T00:00:00");
+  const dayOfWeek = date.getDay(); // 0=日, 5=金, 6=土
+
+  // 金曜日
+  if (dayOfWeek === 5) return "b";
+
+  // 土日祝
+  if (dayOfWeek === 0 || dayOfWeek === 6 || config.holidays.includes(dateStr)) {
+    return "c";
+  }
+
+  // 月〜木
+  return "a";
+}
+
+/** ぷらっとこだまの有効期限 */
+export function getPlatKodamaValidUntil(): string {
+  return platKodamaConfigJson.valid_until;
+}
+
+/** ぷらっとこだまの有効期限を過ぎているか */
+export function isAfterPlatKodamaValidUntil(dateStr: string): boolean {
+  return dateStr > platKodamaConfigJson.valid_until;
+}
+
+/** ぷらっとこだまの料金区分ラベル */
+export function getPlatKodamaGradeLabel(grade: "a" | "b" | "c" | "d"): string {
+  switch (grade) {
+    case "a":
+      return "A料金";
+    case "b":
+      return "B料金";
+    case "c":
+      return "C料金";
+    case "d":
+      return "D料金";
+  }
 }

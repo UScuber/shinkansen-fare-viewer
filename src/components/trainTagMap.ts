@@ -1,14 +1,10 @@
-export const TRAIN_TAG_MAP = {
-  の: { name: "のぞみ", short: "の", color: "#BBBB00", textColor: "dark" },
-  ひ: { name: "ひかり", short: "ひ", color: "#FF0000", textColor: "light" },
-  こ: { name: "こだま", short: "こ", color: "#0000FF", textColor: "light" },
-  み: { name: "みずほ", short: "み", color: "#FFA500", textColor: "dark" },
-  さ: { name: "さくら", short: "さ", color: "#FF1493", textColor: "light" },
-  つ: { name: "つばめ", short: "つ", color: "#00AAAA", textColor: "light" },
-} as const;
+import type { TrainType } from "../data/types";
+import { TRAIN_TAGS } from "../data/trainTags";
 
-export type TrainTag = keyof typeof TRAIN_TAG_MAP;
+/** 全列車タグをエクスポート（コンポーネントから利用） */
+export const trainTagMap = TRAIN_TAGS;
 
-export function isTrainTag(tag: string): tag is TrainTag {
-  return tag in TRAIN_TAG_MAP;
+/** 列車名一覧を取得 */
+export function getAllTrainNames(): { id: TrainType; name: string }[] {
+  return Object.values(TRAIN_TAGS).map((t) => ({ id: t.id, name: t.name }));
 }

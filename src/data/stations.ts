@@ -1,206 +1,179 @@
-// 新幹線全駅リスト（東海道・山陽・九州）
+import type { StationId, TrainType } from "./types";
 
-import type { TrainType } from "./types";
-
-// StationId型の定義（as const配列から導出）
-const STATION_IDS_CONST = [
-  "tokyo",
-  "shinagawa",
-  "shinyokohama",
-  "odawara",
-  "atami",
-  "mishima",
-  "shinfuji",
-  "shizuoka",
-  "kakegawa",
-  "hamamatsu",
-  "toyohashi",
-  "mikawaanjo",
-  "nagoya",
-  "gifuhashima",
-  "maibara",
-  "kyoto",
-  "shinosaka",
-  "shinkobe",
-  "nishiakashi",
-  "himeji",
-  "aioi",
-  "okayama",
-  "shinkurashiki",
-  "fukuyama",
-  "shinonomichi",
-  "mihara",
-  "higashihiroshima",
-  "hiroshima",
-  "shiniwakuni",
-  "tokuyama",
-  "shinyamaguchi",
-  "asa",
-  "shinshimonoseki",
-  "kokura",
-  "hakata",
-  "shintoso",
-  "kurume",
-  "chikugofunagoya",
-  "shinomuta",
-  "shintamana",
-  "kumamoto",
-  "shinyatsushiro",
-  "shinminamata",
-  "izumi",
-  "sendai",
-  "kagoshimachuo",
-] as const;
-
-export type StationId = (typeof STATION_IDS_CONST)[number];
-
-export type Station = {
+export interface StationInfo {
   id: StationId;
   name: string;
-  line: "tokaido" | "sanyo" | "kyushu";
-  distFromTokyo?: number;
-};
+}
 
-export const STATIONS: Station[] = [
-  // 東海道新幹線
-  { id: "tokyo", name: "東京", line: "tokaido", distFromTokyo: 0 },
-  { id: "shinagawa", name: "品川", line: "tokaido", distFromTokyo: 6.8 },
-  {
-    id: "shinyokohama",
-    name: "新横浜",
-    line: "tokaido",
-    distFromTokyo: 28.8,
-  },
-  { id: "odawara", name: "小田原", line: "tokaido", distFromTokyo: 83.9 },
-  { id: "atami", name: "熱海", line: "tokaido", distFromTokyo: 104.6 },
-  { id: "mishima", name: "三島", line: "tokaido", distFromTokyo: 120.7 },
-  { id: "shinfuji", name: "新富士", line: "tokaido", distFromTokyo: 146.2 },
-  { id: "shizuoka", name: "静岡", line: "tokaido", distFromTokyo: 180.2 },
-  { id: "kakegawa", name: "掛川", line: "tokaido", distFromTokyo: 229.3 },
-  { id: "hamamatsu", name: "浜松", line: "tokaido", distFromTokyo: 257.1 },
-  { id: "toyohashi", name: "豊橋", line: "tokaido", distFromTokyo: 293.6 },
-  {
-    id: "mikawaanjo",
-    name: "三河安城",
-    line: "tokaido",
-    distFromTokyo: 336.3,
-  },
-  { id: "nagoya", name: "名古屋", line: "tokaido", distFromTokyo: 366.0 },
-  {
-    id: "gifuhashima",
-    name: "岐阜羽島",
-    line: "tokaido",
-    distFromTokyo: 396.3,
-  },
-  { id: "maibara", name: "米原", line: "tokaido", distFromTokyo: 445.9 },
-  { id: "kyoto", name: "京都", line: "tokaido", distFromTokyo: 513.6 },
-  { id: "shinosaka", name: "新大阪", line: "tokaido", distFromTokyo: 552.6 },
-  // 山陽新幹線
-  { id: "shinkobe", name: "新神戸", line: "sanyo", distFromTokyo: 588.5 },
-  { id: "nishiakashi", name: "西明石", line: "sanyo", distFromTokyo: 617.0 },
-  { id: "himeji", name: "姫路", line: "sanyo", distFromTokyo: 644.0 },
-  { id: "aioi", name: "相生", line: "sanyo", distFromTokyo: 671.3 },
-  { id: "okayama", name: "岡山", line: "sanyo", distFromTokyo: 732.9 },
-  { id: "shinkurashiki", name: "新倉敷", line: "sanyo", distFromTokyo: 768.0 },
-  { id: "fukuyama", name: "福山", line: "sanyo", distFromTokyo: 800.0 },
-  { id: "shinonomichi", name: "新尾道", line: "sanyo", distFromTokyo: 817.0 },
-  { id: "mihara", name: "三原", line: "sanyo", distFromTokyo: 839.0 },
-  {
-    id: "higashihiroshima",
-    name: "東広島",
-    line: "sanyo",
-    distFromTokyo: 869.0,
-  },
-  { id: "hiroshima", name: "広島", line: "sanyo", distFromTokyo: 894.2 },
-  { id: "shiniwakuni", name: "新岩国", line: "sanyo", distFromTokyo: 930.0 },
-  { id: "tokuyama", name: "徳山", line: "sanyo", distFromTokyo: 958.0 },
-  { id: "shinyamaguchi", name: "新山口", line: "sanyo", distFromTokyo: 996.0 },
-  { id: "asa", name: "厚狭", line: "sanyo", distFromTokyo: 1022.0 },
-  {
-    id: "shinshimonoseki",
-    name: "新下関",
-    line: "sanyo",
-    distFromTokyo: 1039.0,
-  },
-  { id: "kokura", name: "小倉", line: "sanyo", distFromTokyo: 1061.0 },
-  { id: "hakata", name: "博多", line: "sanyo", distFromTokyo: 1069.1 },
-  // 九州新幹線
-  { id: "shintoso", name: "新鳥栖", line: "kyushu", distFromTokyo: 1090.0 },
-  { id: "kurume", name: "久留米", line: "kyushu", distFromTokyo: 1098.0 },
-  {
-    id: "chikugofunagoya",
-    name: "筑後船小屋",
-    line: "kyushu",
-    distFromTokyo: 1117.0,
-  },
-  { id: "shinomuta", name: "新大牟田", line: "kyushu", distFromTokyo: 1131.0 },
-  { id: "shintamana", name: "新玉名", line: "kyushu", distFromTokyo: 1150.0 },
-  { id: "kumamoto", name: "熊本", line: "kyushu", distFromTokyo: 1176.0 },
-  {
-    id: "shinyatsushiro",
-    name: "新八代",
-    line: "kyushu",
-    distFromTokyo: 1196.0,
-  },
-  { id: "shinminamata", name: "新水俣", line: "kyushu", distFromTokyo: 1229.0 },
-  { id: "izumi", name: "出水", line: "kyushu", distFromTokyo: 1253.0 },
-  { id: "sendai", name: "川内", line: "kyushu", distFromTokyo: 1289.0 },
-  {
-    id: "kagoshimachuo",
-    name: "鹿児島中央",
-    line: "kyushu",
-    distFromTokyo: 1322.0,
-  },
+/** 全46駅を路線順に定義 */
+export const STATIONS: StationInfo[] = [
+  // 東海道新幹線（0〜16）
+  { id: "tokyo", name: "東京" },
+  { id: "shinagawa", name: "品川" },
+  { id: "shinyokohama", name: "新横浜" },
+  { id: "odawara", name: "小田原" },
+  { id: "atami", name: "熱海" },
+  { id: "mishima", name: "三島" },
+  { id: "shinfuji", name: "新富士" },
+  { id: "shizuoka", name: "静岡" },
+  { id: "kakegawa", name: "掛川" },
+  { id: "hamamatsu", name: "浜松" },
+  { id: "toyohashi", name: "豊橋" },
+  { id: "mikawaanjo", name: "三河安城" },
+  { id: "nagoya", name: "名古屋" },
+  { id: "gifuhashima", name: "岐阜羽島" },
+  { id: "maibara", name: "米原" },
+  { id: "kyoto", name: "京都" },
+  { id: "shinosaka", name: "新大阪" },
+  // 山陽新幹線（17〜33）
+  { id: "shinkobe", name: "新神戸" },
+  { id: "nishiakashi", name: "西明石" },
+  { id: "himeji", name: "姫路" },
+  { id: "aioi", name: "相生" },
+  { id: "okayama", name: "岡山" },
+  { id: "shinkurashiki", name: "新倉敷" },
+  { id: "fukuyama", name: "福山" },
+  { id: "shinonomichi", name: "新尾道" },
+  { id: "mihara", name: "三原" },
+  { id: "higashihiroshima", name: "東広島" },
+  { id: "hiroshima", name: "広島" },
+  { id: "shiniwakuni", name: "新岩国" },
+  { id: "tokuyama", name: "徳山" },
+  { id: "shinyamaguchi", name: "新山口" },
+  { id: "asa", name: "厚狭" },
+  { id: "shinshimonoseki", name: "新下関" },
+  { id: "kokura", name: "小倉" },
+  // 博多（34）- 山陽と九州の境界
+  { id: "hakata", name: "博多" },
+  // 九州新幹線（35〜45）
+  { id: "shintoso", name: "新鳥栖" },
+  { id: "kurume", name: "久留米" },
+  { id: "chikugofunagoya", name: "筑後船小屋" },
+  { id: "shinomuta", name: "新大牟田" },
+  { id: "shinyatsushiro", name: "新八代" },
+  { id: "kumamoto", name: "熊本" },
+  { id: "shintamana", name: "新玉名" },
+  { id: "shinminamata", name: "新水俣" },
+  { id: "izumi", name: "出水" },
+  { id: "sendai", name: "川内" },
+  { id: "kagoshimachuo", name: "鹿児島中央" },
 ];
 
-export const STATION_IDS: StationId[] = [...STATION_IDS_CONST];
+/** 駅IDからインデックスを取得するMap */
+const stationIndexMap = new Map<StationId, number>(
+  STATIONS.map((s, i) => [s.id, i]),
+);
 
-// 辞書型（O(1)アクセス、undefinedなし）
-export const STATION_MAP: Record<StationId, Station> = Object.fromEntries(
-  STATIONS.map((s) => [s.id, s]),
-) as Record<StationId, Station>;
-
-/** 型安全ルックアップ（undefinedなし） */
-export function getStation(id: StationId): Station {
-  return STATION_MAP[id];
+/** 駅IDからインデックスを取得 */
+export function getStationIndex(id: StationId): number {
+  const idx = stationIndexMap.get(id);
+  if (idx === undefined) throw new Error(`Unknown station: ${id}`);
+  return idx;
 }
 
-/** 境界バリデーション（外部入力用） */
-export function toStationId(id: string): StationId | undefined {
-  return id in STATION_MAP ? (id as StationId) : undefined;
+/** 駅IDから駅名を取得 */
+export function getStationName(id: StationId): string {
+  const station = STATIONS.find((s) => s.id === id);
+  if (!station) throw new Error(`Unknown station: ${id}`);
+  return station.name;
 }
 
-/** 既存互換: findStation（外部入力からの検索用） */
-export function findStation(id: string): Station | undefined {
-  return STATION_MAP[id as StationId];
+/** 文字列が有効な駅IDかチェック */
+export function isValidStationId(id: string): id is StationId {
+  return stationIndexMap.has(id as StationId);
 }
 
-// ── 内部用ヘルパー（外部からはRouteクラスを使用すること） ──
+/** 路線区分インデックス */
+const TOKAIDO_END = 16; // 新大阪
+const SANYO_END = 34; // 博多（含む）
+// 九州: 35〜45
 
-function getStationIndex(id: StationId): number {
-  return STATIONS.findIndex((s) => s.id === id);
+/** 東海道新幹線の駅かどうか（東京〜京都：0〜15） */
+export function isTokaidoStation(id: StationId): boolean {
+  const idx = getStationIndex(id);
+  return idx <= 15; // 京都まで（新大阪は含まない）
 }
 
-const HAKATA_INDEX = getStationIndex("hakata");
-
-/**
- * 指定した駅IDリストが路線順序通りかどうか検証する
- * 昇順（東京→鹿児島方向）または降順のいずれかであればtrue
- */
-export function areStationsInOrder(stationIds: StationId[]): boolean {
-  if (stationIds.length <= 1) return true;
-  const indices = stationIds.map(getStationIndex);
-  if (indices.some((i) => i === -1)) return false;
-  const ascending = indices.every((val, i) => i === 0 || val > indices[i - 1]);
-  const descending = indices.every((val, i) => i === 0 || val < indices[i - 1]);
-  return ascending || descending;
+/** 九州新幹線の駅かどうか（新鳥栖〜鹿児島中央：35〜45） */
+export function isKyushuStation(id: StationId): boolean {
+  const idx = getStationIndex(id);
+  return idx >= 35;
 }
 
-/**
- * 各列車の停車駅リスト
- */
-const TRAIN_STOPS: Record<TrainType, Set<StationId>> = {
-  nozomi: new Set<StationId>([
+/** 博多駅かどうか */
+export function isHakata(id: StationId): boolean {
+  return id === "hakata";
+}
+
+/** 博多インデックス */
+export const HAKATA_INDEX = 34;
+
+/** 東海道駅（東京〜京都）↔ 九州駅（新鳥栖〜鹿児島中央）のまたぎ判定 */
+export function isCrossRegion(from: StationId, to: StationId): boolean {
+  return (
+    (isTokaidoStation(from) && isKyushuStation(to)) ||
+    (isKyushuStation(from) && isTokaidoStation(to))
+  );
+}
+
+/** 2駅間の中間駅リスト（from, toは含まない） */
+export function getIntermediateStations(
+  from: StationId,
+  to: StationId,
+): StationInfo[] {
+  let fromIdx = getStationIndex(from);
+  let toIdx = getStationIndex(to);
+  if (fromIdx > toIdx) [fromIdx, toIdx] = [toIdx, fromIdx];
+  return STATIONS.slice(fromIdx + 1, toIdx);
+}
+
+/** 区間で利用可能な列車のリスト */
+export function getAvailableTrains(
+  from: StationId,
+  to: StationId,
+): TrainType[] {
+  let fromIdx = getStationIndex(from);
+  let toIdx = getStationIndex(to);
+  if (fromIdx > toIdx) [fromIdx, toIdx] = [toIdx, fromIdx];
+
+  const inTokaido = fromIdx <= TOKAIDO_END && toIdx <= TOKAIDO_END;
+  const inSanyo =
+    fromIdx >= TOKAIDO_END &&
+    fromIdx <= SANYO_END &&
+    toIdx >= TOKAIDO_END &&
+    toIdx <= SANYO_END;
+  const inKyushu = fromIdx >= SANYO_END && toIdx >= SANYO_END;
+  const tokaidoSanyo =
+    fromIdx <= TOKAIDO_END && toIdx > TOKAIDO_END && toIdx <= SANYO_END;
+  const sanyoKyushu =
+    fromIdx >= TOKAIDO_END && fromIdx <= SANYO_END && toIdx > SANYO_END;
+  const tokaidoKyushu = fromIdx <= TOKAIDO_END && toIdx > SANYO_END;
+
+  let trains: TrainType[];
+
+  if (inTokaido) {
+    trains = ["nozomi", "hikari", "kodama"];
+  } else if (inSanyo) {
+    trains = ["nozomi", "hikari", "kodama", "mizuho", "sakura"];
+  } else if (inKyushu) {
+    trains = ["mizuho", "sakura", "tsubame"];
+  } else if (tokaidoSanyo || tokaidoKyushu) {
+    trains = ["nozomi", "hikari", "kodama"];
+  } else if (sanyoKyushu) {
+    trains = ["mizuho", "sakura"];
+  } else {
+    trains = ["nozomi", "hikari", "kodama"];
+  }
+
+  // さらに停車駅でフィルタ
+  return trains.filter(
+    (t) => TRAIN_STOPS[t].includes(from) && TRAIN_STOPS[t].includes(to),
+  );
+}
+
+/** 列車ごとの停車駅 */
+export const TRAIN_STOPS: Record<TrainType, StationId[]> = {
+  nozomi: [
     "tokyo",
     "shinagawa",
     "shinyokohama",
@@ -208,33 +181,25 @@ const TRAIN_STOPS: Record<TrainType, Set<StationId>> = {
     "kyoto",
     "shinosaka",
     "shinkobe",
-    "okayama",
-    "hiroshima",
-    "kokura",
-    "hakata",
     "nishiakashi",
     "himeji",
+    "okayama",
     "fukuyama",
+    "hiroshima",
     "tokuyama",
     "shinyamaguchi",
-  ]),
-  hikari: new Set<StationId>(
-    // 東京〜博多の全駅から新富士・三河安城・厚狭を除く
-    STATIONS.filter((s) => {
-      const idx = STATIONS.indexOf(s);
-      return idx <= HAKATA_INDEX;
-    })
-      .map((s) => s.id)
-      .filter(
-        (id): id is StationId =>
-          !["shinfuji", "mikawaanjo", "asa"].includes(id),
-      ),
+    "kokura",
+    "hakata",
+  ],
+  hikari: STATIONS.filter(
+    (s) =>
+      getStationIndex(s.id) <= SANYO_END &&
+      !["shinfuji", "mikawaanjo", "asa"].includes(s.id),
+  ).map((s) => s.id),
+  kodama: STATIONS.filter((s) => getStationIndex(s.id) <= SANYO_END).map(
+    (s) => s.id,
   ),
-  kodama: new Set<StationId>(
-    // 東京〜博多の全駅
-    STATIONS.filter((_, idx) => idx <= HAKATA_INDEX).map((s) => s.id),
-  ),
-  mizuho: new Set<StationId>([
+  mizuho: [
     "shinosaka",
     "shinkobe",
     "himeji",
@@ -247,9 +212,8 @@ const TRAIN_STOPS: Record<TrainType, Set<StationId>> = {
     "kumamoto",
     "sendai",
     "kagoshimachuo",
-  ]),
-  sakura: new Set<StationId>([
-    // 山陽区間の停車駅
+  ],
+  sakura: [
     "shinosaka",
     "shinkobe",
     "nishiakashi",
@@ -261,30 +225,49 @@ const TRAIN_STOPS: Record<TrainType, Set<StationId>> = {
     "shinyamaguchi",
     "shinshimonoseki",
     "kokura",
-    // 博多〜鹿児島中央の全駅
-    ...STATIONS.filter((_, idx) => idx >= HAKATA_INDEX).map((s) => s.id),
-  ]),
-  tsubame: new Set<StationId>(
-    // 新下関〜鹿児島中央の全駅
-    STATIONS.filter(
-      (_, idx) => idx >= STATIONS.findIndex((s) => s.id === "shinshimonoseki"),
-    ).map((s) => s.id),
-  ),
+    "hakata",
+    "shintoso",
+    "kurume",
+    "chikugofunagoya",
+    "shinomuta",
+    "shinyatsushiro",
+    "kumamoto",
+    "shintamana",
+    "shinminamata",
+    "izumi",
+    "sendai",
+    "kagoshimachuo",
+  ],
+  tsubame: [
+    "shinshimonoseki",
+    "kokura",
+    "hakata",
+    "shintoso",
+    "kurume",
+    "chikugofunagoya",
+    "shinomuta",
+    "shinyatsushiro",
+    "kumamoto",
+    "shintamana",
+    "shinminamata",
+    "izumi",
+    "sendai",
+    "kagoshimachuo",
+  ],
 };
 
-/**
- * 指定した列車が指定した駅に停車するか判定
- */
-export function doesTrainStopAt(
-  trainType: TrainType,
-  stationId: StationId,
-): boolean {
-  return TRAIN_STOPS[trainType]?.has(stationId) ?? false;
-}
-
-/**
- * 列車がのぞみ/みずほグループかどうか判定
- */
-export function isNozomiMizuho(trainType: TrainType | null): boolean {
-  return trainType === "nozomi" || trainType === "mizuho";
-}
+/** 駅セレクト用のグループ分け */
+export const STATION_GROUPS = [
+  {
+    label: "東海道新幹線",
+    stations: STATIONS.slice(0, TOKAIDO_END + 1),
+  },
+  {
+    label: "山陽新幹線",
+    stations: STATIONS.slice(TOKAIDO_END + 1, SANYO_END + 1),
+  },
+  {
+    label: "九州新幹線",
+    stations: STATIONS.slice(SANYO_END + 1),
+  },
+];

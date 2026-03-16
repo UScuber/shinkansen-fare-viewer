@@ -1,105 +1,69 @@
-/**
- * 自由席特急券の分割DP（全ペア事前計算）
- */
+import type { FreeSplitResult, StationId } from "../types";
+import { getFareEntry } from "../allFares";
+import { STATIONS, getStationIndex } from "../stations";
 
-import { getAllFares } from "../allFares";
-import type { StationId } from "../stations";
-import type { ExpressSegment, FreeSeatSplitResult } from "../splitFareSearch";
-
-/**
- * 全ペア(j, i)について自由席特急券の最安分割を計算
- * dp[j][i] = station j → station i の自由席特急券の最安分割コスト
- * prev[j][i] = 最適パスで station i の直前の駅インデックス
- */
+/** 自由席特急券の分割DPで最安値を探索 */
 export function computeFreeSplitDP(
-  stationIds: StationId[],
-  n: number,
-): { dp: number[][]; prev: number[][] } {
-  // dp[j][i] と prev[j][i] を初期化
-  const dp: number[][] = [];
-  const prev: number[][] = [];
-  for (let j = 0; j < n; j++) {
-    dp[j] = new Array<number>(n).fill(Infinity);
-    prev[j] = new Array<number>(n).fill(-1);
-    dp[j][j] = 0;
-  }
+  from: StationId,
+  to: StationId,
+): FreeSplitResult | null {
+  let fromIdx = getStationIndex(from);
+  let toIdx = getStationIndex(to);
+  const reversed = fromIdx > toIdx;
+  if (reversed) [fromIdx, toIdx] = [toIdx, fromIdx];
 
-  for (let j = 0; j < n; j++) {
-    for (let i = j + 1; i < n; i++) {
-      for (let m = j; m < i; m++) {
-        if (dp[j][m] === Infinity) continue;
+  const n = toIdx - fromIdx;
+  if (n <= 1) return null; // 隣接駅は分割不可
 
-        const fareData = getAllFares(stationIds[m], stationIds[i]);
-        if (!fareData || fareData.free === null) continue;
+  // 乗車券は通し
+  const throughEntry = getFareEntry(from, to);
+  if (!throughEntry) return null;
+  const ticketFare = throughEntry.ticket_fare;
+  const throughFree = throughEntry.free;
+  const throughTotal = ticketFare + throughFree;
 
-        const cost = dp[j][m] + fareData.free;
-        if (cost < dp[j][i]) {
-          dp[j][i] = cost;
-          prev[j][i] = m;
-        }
+  // DP
+  const dp = new Array<number>(n + 1).fill(Infinity);
+  const prev = new Array<number>(n + 1).fill(-1);
+  dp[0] = 0;
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 0; j < i; j++) {
+      const stationJ = STATIONS[fromIdx + j].id;
+      const stationI = STATIONS[fromIdx + i].id;
+      const entry = getFareEntry(stationJ, stationI);
+      if (!entry) continue;
+      const cost = dp[j] + entry.free;
+      if (cost < dp[i]) {
+        dp[i] = cost;
+        prev[i] = j;
       }
     }
   }
 
-  return { dp, prev };
-}
+  if (dp[n] >= throughFree) return null; // 分割しても安くならない
 
-/**
- * 自由席特急券の分割パスを復元
- */
-export function reconstructExpressPath(
-  stationIds: StationId[],
-  freePrev: number[][],
-  start: number,
-  end: number,
-): ExpressSegment[] {
-  const segments: ExpressSegment[] = [];
-  let idx = end;
-  while (idx > start) {
-    const m = freePrev[start][idx];
-    const fareData = getAllFares(stationIds[m], stationIds[idx]);
+  // パスを復元
+  const segments: { from: StationId; to: StationId; fare: number }[] = [];
+  let cur = n;
+  while (cur > 0) {
+    const p = prev[cur];
+    const segFrom = STATIONS[fromIdx + p].id;
+    const segTo = STATIONS[fromIdx + cur].id;
+    const entry = getFareEntry(segFrom, segTo);
     segments.unshift({
-      fromId: stationIds[m],
-      toId: stationIds[idx],
-      expressFare: fareData!.free!,
+      from: segFrom,
+      to: segTo,
+      fare: entry!.free,
     });
-    idx = m;
+    cur = p;
   }
-  return segments;
-}
 
-/**
- * 自由席分割最安値の構築
- */
-export function buildFreeSeatSplit(
-  stationIds: StationId[],
-  n: number,
-  throughTicketFare: number,
-  throughTotal: number,
-  freeDp: number[][],
-  freePrev: number[][],
-): FreeSeatSplitResult | null {
-  const expressTotal = freeDp[0][n - 1];
-  if (expressTotal === Infinity) return null;
+  if (segments.length <= 1) return null; // 分割なし
 
-  const total = throughTicketFare + expressTotal;
-  if (total >= throughTotal) return null;
+  const total = ticketFare + dp[n];
+  const saving = throughTotal - total;
+  if (saving <= 0) return null;
 
-  // 経路復元
-  const expressSegments = reconstructExpressPath(
-    stationIds,
-    freePrev,
-    0,
-    n - 1,
-  );
-
-  // 分割なし（1区間 = 通し）なら表示不要
-  if (expressSegments.length <= 1) return null;
-
-  return {
-    throughTicketFare,
-    expressSegments,
-    total,
-    savings: throughTotal - total,
-  };
+  return { ticketFare, segments, total, throughTotal, saving };
 }

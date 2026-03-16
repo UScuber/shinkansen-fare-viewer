@@ -1,63 +1,22 @@
-/**
- * 全運賃データの取得
- * fares.jsonから全項目を読み込み
- */
+import type { FareEntry, StationId } from "./types";
+import faresJson from "./fares.json";
 
-import type { StationId } from "./stations";
-import FARES_DATA from "./fares.json";
+const fareData = faresJson as FareEntry[];
 
-export type AllFaresEntry = {
-  start: StationId;
-  end: StationId;
-  hikari_reserved: number | null;
-  green: number | null;
-  green_charge: number | null;
-  free: number | null;
-  nozomi_additional: number | null;
-  distance: number;
-  ticket_fare: number | null;
-  smartex_free: number | null;
-  smartex_reserved: number | null;
-  smartex_green: number | null;
-  smartex_hayatoku1: number | null;
-  smartex_hayatoku1_2026_apr: number | null;
-  smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green: number | null;
-  smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_reserved: number | null;
-  smartex_hayatoku3_hikari_green: number | null;
-  smartex_hayatoku3_kodama_green: number | null;
-  smartex_hayatoku7_nozomi_mizuho_sakura_tsubame_reserved: number | null;
-  smartex_hayatoku7_hikari_kodama_reserved: number | null;
-  smartex_hayatoku21_nozomi_mizuho_sakura_tsubame_reserved: number | null;
-  smartex_family_hayatoku7_hikari_kodama_reserved: number | null;
-  plat_kodama_reserved_a: number | null;
-  plat_kodama_reserved_b: number | null;
-  plat_kodama_reserved_c: number | null;
-  plat_kodama_reserved_d: number | null;
-  plat_kodama_green_a: number | null;
-  plat_kodama_green_b: number | null;
-  plat_kodama_green_c: number | null;
-  plat_kodama_green_d: number | null;
-};
+/** 駅ペアキーを生成（順序を正規化） */
+function makeKey(a: StationId, b: StationId): string {
+  return a < b ? `${a}:${b}` : `${b}:${a}`;
+}
 
-// JSONデータをMapに変換（双方向）
-const fareMap = new Map<string, AllFaresEntry>();
+/** 料金データをMapに変換 */
+const fareMap = new Map<string, FareEntry>();
+for (const entry of fareData) {
+  const key = makeKey(entry.start as StationId, entry.end as StationId);
+  fareMap.set(key, entry);
+}
 
-(FARES_DATA as unknown as AllFaresEntry[]).forEach((entry) => {
-  const key1 = `${entry.start}_${entry.end}`;
-  const key2 = `${entry.end}_${entry.start}`;
-  fareMap.set(key1, entry);
-  fareMap.set(key2, entry);
-});
-
-/**
- * 駅IDから全運賃データを取得
- * @param from 出発駅ID
- * @param to 到着駅ID
- */
-export function getAllFares(
-  from: StationId,
-  to: StationId,
-): AllFaresEntry | null {
-  const key = `${from}_${to}`;
-  return fareMap.get(key) || null;
+/** 2駅間の料金データを取得 */
+export function getFareEntry(from: StationId, to: StationId): FareEntry | null {
+  if (from === to) return null;
+  return fareMap.get(makeKey(from, to)) ?? null;
 }

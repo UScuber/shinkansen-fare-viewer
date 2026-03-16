@@ -1,141 +1,79 @@
-import { stationName } from "../data/Route";
+import type { SplitFareResultData } from "../data/types";
+import { getStationName } from "../data/stations";
+import FareSection from "./FareSection";
 import { formatYen } from "./ui/format";
-import type {
-  FreeSeatSplitResult,
-  MixedSplitGroup,
-  MixedSplitResult,
-  SplitSearchResult,
-} from "../data/splitFareSearch";
 
-type Props = {
-  result: SplitSearchResult;
-};
+interface SplitFareResultProps {
+  result: SplitFareResultData;
+}
 
-function FreeSeatSplitSection({ split }: { split: FreeSeatSplitResult }) {
+export default function SplitFareResult({ result }: SplitFareResultProps) {
+  const { freeSplit, mixedSplit } = result;
+
+  if (!freeSplit && !mixedSplit) return null;
+
   return (
-    <div className="split-result__section">
-      <h3 className="split-result__section-title">
-        自由席 分割最安値（通しより {formatYen(split.savings)} 安い）
-      </h3>
-
-      <div className="split-result__segment-list">
-        <div className="split-result__segment-item split-result__segment-item--ticket">
-          <div className="split-result__segment-route">
-            乗車券（{stationName(split.expressSegments[0].fromId)} →{" "}
-            {stationName(
-              split.expressSegments[split.expressSegments.length - 1].toId,
-            )}{" "}
-            通し）
-          </div>
-          <div className="split-result__segment-fare">
-            <span className="split-result__fare-value">
-              {formatYen(split.throughTicketFare)}
+    <div>
+      {freeSplit && (
+        <FareSection title="自由席分割最安値">
+          <div className="flex items-center justify-between gap-2 border-b border-gray-100 py-1.5">
+            <span className="text-sm text-gray-600">乗車券（通し）</span>
+            <span className="whitespace-nowrap font-mono text-sm font-bold text-indigo-900">
+              {formatYen(freeSplit.ticketFare)}
             </span>
           </div>
-        </div>
-        {split.expressSegments.map((seg, i) => (
-          <div key={i} className="split-result__segment-item">
-            <div className="split-result__segment-route">
-              特急券{i + 1}: {stationName(seg.fromId)} → {stationName(seg.toId)}
+          {freeSplit.segments.map((seg, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-2 border-b border-gray-100 py-1.5"
+            >
+              <span className="text-sm text-gray-600">
+                区間{i + 1}: {getStationName(seg.from)}→{getStationName(seg.to)}
+              </span>
+              <span className="whitespace-nowrap font-mono text-sm font-bold text-indigo-900">
+                {formatYen(seg.fare)}
+              </span>
             </div>
-            <div className="split-result__segment-detail">
-              自由席特急券 {formatYen(seg.expressFare)}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="split-result__total">
-        <span>合計</span>
-        <span className="split-result__total-value">
-          {formatYen(split.total)}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function MixedGroupItem({ group }: { group: MixedSplitGroup }) {
-  if (group.type === "bundled") {
-    return (
-      <div className="split-result__segment-item split-result__segment-item--bundled">
-        <div className="split-result__segment-route">
-          {stationName(group.fromId)} → {stationName(group.toId)}
-        </div>
-        <div className="split-result__segment-product">{group.productName}</div>
-        <div className="split-result__segment-fare">
-          <span className="split-result__fare-value">
-            {formatYen(group.fare)}
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  // ticket_group
-  return (
-    <div className="split-result__ticket-group">
-      <div className="split-result__ticket-group-header">
-        通常きっぷ: {stationName(group.fromId)} → {stationName(group.toId)}
-      </div>
-      <div className="split-result__ticket-group-items">
-        <div className="split-result__ticket-group-row">
-          <span>乗車券（通し）</span>
-          <span>{formatYen(group.ticketFare)}</span>
-        </div>
-        {group.expressSegments.map((seg, i) => (
-          <div key={i} className="split-result__ticket-group-row">
-            <span>
-              自由席特急券 {stationName(seg.fromId)} → {stationName(seg.toId)}
+          ))}
+          <div className="mt-1 flex items-center justify-between border-t-2 border-indigo-900 pt-2">
+            <span className="text-sm text-gray-600">合計</span>
+            <span className="whitespace-nowrap font-mono text-base font-bold text-indigo-900">
+              {formatYen(freeSplit.total)}
             </span>
-            <span>{formatYen(seg.expressFare)}</span>
           </div>
-        ))}
-        <div className="split-result__ticket-group-row split-result__ticket-group-row--subtotal">
-          <span>小計</span>
-          <span>{formatYen(group.subtotal)}</span>
-        </div>
-      </div>
+          <div className="py-1.5 text-center text-[0.85rem] font-bold text-green-600">
+            通しより {formatYen(freeSplit.saving)} 安い
+          </div>
+        </FareSection>
+      )}
+
+      {mixedSplit && (
+        <FareSection title="早特混合分割最安値">
+          {mixedSplit.segments.map((seg, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-2 border-b border-gray-100 py-1.5"
+            >
+              <span className="text-sm text-gray-600">
+                区間{i + 1}: {seg.productName}（{getStationName(seg.from)}→
+                {getStationName(seg.to)}）
+              </span>
+              <span className="whitespace-nowrap font-mono text-sm font-bold text-indigo-900">
+                {formatYen(seg.fare)}
+              </span>
+            </div>
+          ))}
+          <div className="mt-1 flex items-center justify-between border-t-2 border-indigo-900 pt-2">
+            <span className="text-sm text-gray-600">合計</span>
+            <span className="whitespace-nowrap font-mono text-base font-bold text-indigo-900">
+              {formatYen(mixedSplit.total)}
+            </span>
+          </div>
+          <div className="py-1.5 text-center text-[0.85rem] font-bold text-green-600">
+            通しより {formatYen(mixedSplit.saving)} 安い
+          </div>
+        </FareSection>
+      )}
     </div>
   );
 }
-
-function MixedSplitSection({ split }: { split: MixedSplitResult }) {
-  return (
-    <div className="split-result__section split-result__section--mixed">
-      <h3 className="split-result__section-title">
-        早特混合 分割最安値（通しより {formatYen(split.savings)} 安い）
-      </h3>
-
-      <div className="split-result__segment-list">
-        {split.groups.map((group, i) => (
-          <MixedGroupItem key={i} group={group} />
-        ))}
-      </div>
-
-      <div className="split-result__total">
-        <span>合計</span>
-        <span className="split-result__total-value">
-          {formatYen(split.total)}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function SplitFareResult({ result }: Props) {
-  const { freeSeatSplit, mixedSplit } = result;
-
-  if (!freeSeatSplit && !mixedSplit) {
-    return null;
-  }
-
-  return (
-    <div className="split-result">
-      {freeSeatSplit && <FreeSeatSplitSection split={freeSeatSplit} />}
-      {mixedSplit && <MixedSplitSection split={mixedSplit} />}
-    </div>
-  );
-}
-
-export default SplitFareResult;

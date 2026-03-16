@@ -1,34 +1,34 @@
+import type { CalculatedFares } from "../../data/types";
 import FareSection from "../FareSection";
-import FareRow from "../FareRow";
-import FareTableView from "../ui/FareTableView";
-import type { CalculatedFares } from "../../data/calculator";
+import { formatYen, formatDistance } from "../ui/format";
 
-type Props = {
+interface TicketSectionProps {
   fares: CalculatedFares;
-  useGakuwari?: boolean;
-};
+  useGakuwari: boolean;
+}
 
-function TicketSection({ fares, useGakuwari = false }: Props) {
+export default function TicketSection({
+  fares,
+  useGakuwari,
+}: TicketSectionProps) {
+  const ticketFare = useGakuwari ? fares.gakuwariTicketFare : fares.ticketFare;
+
   return (
     <FareSection title="乗車券">
-      <FareTableView>
-        <FareRow label="距離" value={fares.distance} note="km" />
-        {useGakuwari ? (
-          <FareRow
-            label="学割運賃"
-            value={fares.studentFare}
-            note={
-              fares.studentFareApplicable
-                ? "学割適用中"
-                : "101km未満のため通常運賃と同額"
-            }
-          />
-        ) : (
-          <FareRow label="乗車券運賃" value={fares.ticketFare} />
-        )}
-      </FareTableView>
+      <div className="flex items-center justify-between gap-2 border-b border-gray-100 py-1.5 last:border-b-0">
+        <span className="text-sm text-gray-600">距離</span>
+        <span className="whitespace-nowrap text-right font-mono text-sm font-bold text-indigo-900">
+          {formatDistance(fares.distance)}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2 border-b border-gray-100 py-1.5 last:border-b-0">
+        <span className="text-sm text-gray-600">
+          {useGakuwari ? "乗車券運賃（学割）" : "乗車券運賃"}
+        </span>
+        <span className="whitespace-nowrap text-right font-mono text-sm font-bold text-indigo-900">
+          {formatYen(ticketFare)}
+        </span>
+      </div>
     </FareSection>
   );
 }
-
-export default TicketSection;

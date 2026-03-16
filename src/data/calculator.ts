@@ -1,323 +1,163 @@
-/**
- * 料金計算ロジック
- */
+import type { CalculatedFares, StationId } from "./types";
+import { getFareEntry } from "./allFares";
+import {
+  getSeason,
+  getSeasonalBaseDiff,
+  isExcludedDate as checkExcludedDate,
+  getPlatKodamaGrade,
+  getPlatKodamaGradeLabel,
+  isAfterPlatKodamaValidUntil,
+} from "./calendar";
+import { isCrossRegion } from "./stations";
 
-import { getSeason, SEASON_DIFF } from "./calendar";
-import { getAllFares } from "./allFares";
-import { Route } from "./Route";
-import type { StationId } from "./stations";
-import platKodamaConfig from "./plat_kodama_config.json";
-
-export type PassengerType = "adult" | "child";
-export type PlatKodamaPriceClass = "A" | "B" | "C" | "D";
-
-export function applyPassenger(
-  fare: number | null,
-  type: PassengerType,
-): number | null {
-  if (fare === null) return null;
-  if (type === "child") return Math.floor(fare / 2);
-  return fare;
-}
-
-/**
- * 早特・ぷらっとこだまの設定除外日かどうか判定
- */
-export function isExcludedDate(date: Date): boolean {
-  const ranges = [
-    { start: new Date(2026, 3, 24), end: new Date(2026, 4, 6) }, // GW
-    { start: new Date(2026, 7, 7), end: new Date(2026, 7, 16) }, // お盆
-    { start: new Date(2026, 8, 18), end: new Date(2026, 8, 23) }, // シルバーウィーク
-    { start: new Date(2026, 11, 25), end: new Date(2027, 0, 5) }, // 年末年始
-  ];
-  for (const range of ranges) {
-    if (date >= range.start && date <= range.end) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * 学割運賃を計算
- * distanceの小数第一位を切り上げた値が101以上の場合、
- * ticket_fareを0.8倍して一の位を切り捨てた値
- */
-export function calculateStudentFare(
+/** 学割運賃を計算 */
+export function calcGakuwariTicketFare(
+  ticketFare: number,
   distance: number,
-  ticketFare: number | null,
-): number | null {
-  if (ticketFare === null) return null;
-  const ceiledDistance = Math.ceil(distance);
-  if (ceiledDistance >= 101) {
+): number {
+  if (Math.ceil(distance) >= 101) {
     return Math.floor((ticketFare * 0.8) / 10) * 10;
   }
   return ticketFare;
 }
 
-export function calculateSeasonalDiff(
-  fromId: StationId,
-  toId: StationId,
-  date: Date,
-): number {
-  const season = getSeason(date);
-  let seasonalDiff = SEASON_DIFF[season];
-  if (new Route(fromId, toId).isCrossRegion) {
-    seasonalDiff *= 2;
-  }
-  return seasonalDiff;
-}
-
-export function addSeasonalDiff(
-  fare: number | null,
-  seasonalDiff: number,
-): number | null {
-  if (fare === null) return null;
-  return fare + seasonalDiff;
-}
-
-export function addAdditional(
-  fare: number | null,
-  additional: number | null,
-): number | null {
-  if (fare === null || additional === null) return null;
-  return fare + additional;
-}
-
-/**
- * ぷらっとこだまの料金区分を判定
- * @returns 料金区分（A/B/C/D）、判定できない場合はnull
- */
-export function getPlatKodamaPriceClass(
-  date: Date,
-): PlatKodamaPriceClass | null {
-  // 有効期限チェック
-  const validUntil = new Date(platKodamaConfig.valid_until);
-  if (date > validUntil) {
-    return null;
-  }
-
-  // 繁忙期チェック
-  const dateStr = date.toISOString().split("T")[0];
-  for (const period of platKodamaConfig.peak_periods) {
-    const start = new Date(period.start);
-    const end = new Date(period.end);
-    if (date >= start && date <= end) {
-      return "D";
-    }
-  }
-
-  // 祝日チェック
-  if (platKodamaConfig.holidays.includes(dateStr)) {
-    return "C";
-  }
-
-  // 曜日チェック（0=日曜、1=月曜、...、6=土曜）
-  const dayOfWeek = date.getDay();
-
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    // 日曜または土曜
-    return "C";
-  } else if (dayOfWeek === 5) {
-    // 金曜
-    return "B";
-  } else {
-    // 月～木曜
-    return "A";
-  }
-}
-
-/**
- * 全料金計算結果の型定義
- */
-export type CalculatedFares = {
-  // 基本情報
-  distance: number;
-  ticketFare: number | null;
-  studentFare: number | null;
-  studentFareApplicable: boolean;
-  platKodamaPriceClass: PlatKodamaPriceClass | null;
-
-  // 特急料金の内訳用データ（生値）
-  hikariReservedBase: number | null;
-  nozomiAdditional: number | null;
-  greenCharge: number | null;
-  seasonalDiff: number;
-
-  // 特急券（季節加算済み）
-  expressNozomiMizuhoReserved: number | null;
-  expressOtherReserved: number | null;
-  expressNozomiMizuhoGreen: number | null;
-  expressOtherGreen: number | null;
-  expressFree: number | null;
-
-  // スマートEX（季節加算済み、自由席除く）
-  smartexNozomiMizuhoReserved: number | null;
-  smartexOtherReserved: number | null;
-  smartexNozomiMizuhoGreen: number | null;
-  smartexOtherGreen: number | null;
-  smartexFree: number | null;
-
-  // EX早特（除外日考慮済み）
-  hayatoku1Free: number | null;
-  hayatoku3NozomiMizuhoSakuraTsubameGreen: number | null;
-  hayatoku3HikariGreen: number | null;
-  hayatoku3KodamaGreen: number | null;
-  hayatoku7NozomiMizuhoSakuraTsubameReserved: number | null;
-  hayatoku7HikariKodamaReserved: number | null;
-  hayatoku21NozomiMizuhoSakuraTsubameReserved: number | null;
-  familyHayatoku7HikariKodamaReserved: number | null;
-
-  // ぷらっとこだま（除外日考慮済み）
-  platKodamaReservedA: number | null;
-  platKodamaReservedB: number | null;
-  platKodamaReservedC: number | null;
-  platKodamaReservedD: number | null;
-  platKodamaGreenA: number | null;
-  platKodamaGreenB: number | null;
-  platKodamaGreenC: number | null;
-  platKodamaGreenD: number | null;
-};
-
-/**
- * 指定区間・日付の全料金を計算（乗客種別適用前）
- * シーズンによる金額調整、学割計算、特急券計算などをすべて実施
- */
+/** メイン料金計算 */
 export function calculateAllFares(
-  fromId: StationId,
-  toId: StationId,
-  date: Date,
+  from: StationId,
+  to: StationId,
+  dateStr: string,
 ): CalculatedFares | null {
-  const fareData = getAllFares(fromId, toId);
-  if (!fareData) {
-    return null;
-  }
+  const entry = getFareEntry(from, to);
+  if (!entry) return null;
 
-  const seasonalDiff = calculateSeasonalDiff(fromId, toId, date);
-  const excluded = isExcludedDate(date);
-  const isAfter2026Apr = date >= new Date(2026, 3, 1);
-  const platKodamaPriceClass = getPlatKodamaPriceClass(date);
+  const season = getSeason(dateStr);
+  const baseDiff = getSeasonalBaseDiff(season);
+  const crossRegion = isCrossRegion(from, to);
+  const seasonalDiff = crossRegion ? baseDiff * 2 : baseDiff;
 
-  // 基本情報
-  const distance = fareData.distance;
-  const ticketFare = fareData.ticket_fare;
-  const studentFare = calculateStudentFare(distance, ticketFare);
-  const studentFareApplicable = Math.ceil(distance) >= 101;
+  const ticketFare = entry.ticket_fare;
+  const gakuwariTicketFare = calcGakuwariTicketFare(ticketFare, entry.distance);
 
-  // 特急券（季節加算適用）
-  const hikariReservedWithSeason = addSeasonalDiff(
-    fareData.hikari_reserved,
-    seasonalDiff,
-  );
-  const greenWithSeason = addSeasonalDiff(fareData.green, seasonalDiff);
+  // 特急料金
+  const free = entry.free;
+  const hikariReservedBase = entry.hikari_reserved;
+  const hikariReserved = hikariReservedBase + seasonalDiff;
+  const nozomiAdditional = entry.nozomi_additional;
+  const nozomiReserved =
+    nozomiAdditional != null
+      ? hikariReservedBase + seasonalDiff + nozomiAdditional
+      : null;
 
-  const expressNozomiMizuhoReserved = addAdditional(
-    hikariReservedWithSeason,
-    fareData.nozomi_additional,
-  );
-  const expressOtherReserved = hikariReservedWithSeason;
-  const expressNozomiMizuhoGreen = addAdditional(
-    greenWithSeason,
-    fareData.nozomi_additional,
-  );
-  const expressOtherGreen = greenWithSeason;
-  const expressFree = fareData.free;
+  const greenCharge = entry.green_charge;
+  const hikariGreen =
+    greenCharge != null
+      ? hikariReservedBase - 530 + greenCharge + seasonalDiff
+      : entry.green + seasonalDiff;
+  const nozomiGreen =
+    nozomiAdditional != null ? hikariGreen + nozomiAdditional : null;
 
-  // スマートEX（指定席・グリーンは季節加算適用、自由席は適用なし）
-  const smartexReservedWithSeason = addSeasonalDiff(
-    fareData.smartex_reserved,
-    seasonalDiff,
-  );
-  const smartexGreenWithSeason = addSeasonalDiff(
-    fareData.smartex_green,
-    seasonalDiff,
-  );
+  // SmartEX
+  const excluded = checkExcludedDate(dateStr);
+  const smartexFree = entry.smartex_free;
+  const smartexReserved =
+    entry.smartex_reserved != null
+      ? entry.smartex_reserved + seasonalDiff
+      : null;
+  const smartexReservedNozomi =
+    entry.smartex_reserved != null && nozomiAdditional != null
+      ? entry.smartex_reserved + seasonalDiff + nozomiAdditional
+      : null;
+  const smartexGreen =
+    entry.smartex_green != null ? entry.smartex_green + seasonalDiff : null;
+  const smartexGreenNozomi =
+    entry.smartex_green != null && nozomiAdditional != null
+      ? entry.smartex_green + seasonalDiff + nozomiAdditional
+      : null;
 
-  const smartexNozomiMizuhoReserved = addAdditional(
-    smartexReservedWithSeason,
-    fareData.nozomi_additional,
-  );
-  const smartexOtherReserved = smartexReservedWithSeason;
-  const smartexNozomiMizuhoGreen = addAdditional(
-    smartexGreenWithSeason,
-    fareData.nozomi_additional,
-  );
-  const smartexOtherGreen = smartexGreenWithSeason;
-  const smartexFree = fareData.smartex_free;
-
-  // EX早特（除外日の場合null）
-  const hayatoku1Base = isAfter2026Apr
-    ? fareData.smartex_hayatoku1_2026_apr
-    : fareData.smartex_hayatoku1;
-
-  const hayatoku1Free = excluded ? null : hayatoku1Base;
-  const hayatoku3NozomiMizuhoSakuraTsubameGreen = excluded
+  // 早特（設定除外日なら全てnull扱い）
+  const hayatoku1 = excluded ? null : getHayatoku1(entry, dateStr);
+  const hayatoku3NozomiGreen = excluded
     ? null
-    : fareData.smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green;
+    : entry.smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green;
   const hayatoku3HikariGreen = excluded
     ? null
-    : fareData.smartex_hayatoku3_hikari_green;
+    : entry.smartex_hayatoku3_hikari_green;
   const hayatoku3KodamaGreen = excluded
     ? null
-    : fareData.smartex_hayatoku3_kodama_green;
-  const hayatoku7NozomiMizuhoSakuraTsubameReserved = excluded
+    : entry.smartex_hayatoku3_kodama_green;
+  const hayatoku7NozomiReserved = excluded
     ? null
-    : fareData.smartex_hayatoku7_nozomi_mizuho_sakura_tsubame_reserved;
-  const hayatoku7HikariKodamaReserved = excluded
+    : entry.smartex_hayatoku7_nozomi_mizuho_sakura_tsubame_reserved;
+  const hayatoku7HikariReserved = excluded
     ? null
-    : fareData.smartex_hayatoku7_hikari_kodama_reserved;
-  const hayatoku21NozomiMizuhoSakuraTsubameReserved = excluded
+    : entry.smartex_hayatoku7_hikari_kodama_reserved;
+  const hayatoku21NozomiReserved = excluded
     ? null
-    : fareData.smartex_hayatoku21_nozomi_mizuho_sakura_tsubame_reserved;
-  const familyHayatoku7HikariKodamaReserved = excluded
+    : entry.smartex_hayatoku21_nozomi_mizuho_sakura_tsubame_reserved;
+  const familyHayatoku7HikariReserved = excluded
     ? null
-    : fareData.smartex_family_hayatoku7_hikari_kodama_reserved;
+    : entry.smartex_family_hayatoku7_hikari_kodama_reserved;
 
-  // ぷらっとこだま（除外日の場合null）
-  const platKodamaReservedA = excluded ? null : fareData.plat_kodama_reserved_a;
-  const platKodamaReservedB = excluded ? null : fareData.plat_kodama_reserved_b;
-  const platKodamaReservedC = excluded ? null : fareData.plat_kodama_reserved_c;
-  const platKodamaReservedD = excluded ? null : fareData.plat_kodama_reserved_d;
-  const platKodamaGreenA = excluded ? null : fareData.plat_kodama_green_a;
-  const platKodamaGreenB = excluded ? null : fareData.plat_kodama_green_b;
-  const platKodamaGreenC = excluded ? null : fareData.plat_kodama_green_c;
-  const platKodamaGreenD = excluded ? null : fareData.plat_kodama_green_d;
+  // ぷらっとこだま
+  let platKodamaReserved: number | null = null;
+  let platKodamaGreen: number | null = null;
+  let platKodamaLabel = "";
+  let platKodamaAfterValidUntil = false;
+
+  if (!excluded) {
+    const grade = getPlatKodamaGrade(dateStr);
+    platKodamaLabel = getPlatKodamaGradeLabel(grade);
+    platKodamaAfterValidUntil = isAfterPlatKodamaValidUntil(dateStr);
+    platKodamaReserved = entry[`plat_kodama_reserved_${grade}`];
+    platKodamaGreen = entry[`plat_kodama_green_${grade}`];
+  }
 
   return {
-    distance,
+    distance: entry.distance,
     ticketFare,
-    studentFare,
-    studentFareApplicable,
-    platKodamaPriceClass,
-    hikariReservedBase: fareData.hikari_reserved,
-    nozomiAdditional: fareData.nozomi_additional,
-    greenCharge: fareData.green_charge,
+    gakuwariTicketFare,
+    free,
+    hikariReserved,
+    hikariReservedBase,
+    nozomiReserved,
+    hikariGreen,
+    nozomiGreen,
+    nozomiAdditional,
+    greenCharge,
     seasonalDiff,
-    expressNozomiMizuhoReserved,
-    expressOtherReserved,
-    expressNozomiMizuhoGreen,
-    expressOtherGreen,
-    expressFree,
-    smartexNozomiMizuhoReserved,
-    smartexOtherReserved,
-    smartexNozomiMizuhoGreen,
-    smartexOtherGreen,
     smartexFree,
-    hayatoku1Free,
-    hayatoku3NozomiMizuhoSakuraTsubameGreen,
+    smartexReserved,
+    smartexReservedNozomi,
+    smartexGreen,
+    smartexGreenNozomi,
+    hayatoku1,
+    hayatoku3NozomiGreen,
     hayatoku3HikariGreen,
     hayatoku3KodamaGreen,
-    hayatoku7NozomiMizuhoSakuraTsubameReserved,
-    hayatoku7HikariKodamaReserved,
-    hayatoku21NozomiMizuhoSakuraTsubameReserved,
-    familyHayatoku7HikariKodamaReserved,
-    platKodamaReservedA,
-    platKodamaReservedB,
-    platKodamaReservedC,
-    platKodamaReservedD,
-    platKodamaGreenA,
-    platKodamaGreenB,
-    platKodamaGreenC,
-    platKodamaGreenD,
+    hayatoku7NozomiReserved,
+    hayatoku7HikariReserved,
+    hayatoku21NozomiReserved,
+    familyHayatoku7HikariReserved,
+    platKodamaReserved,
+    platKodamaGreen,
+    platKodamaLabel,
+    platKodamaAfterValidUntil,
+    isExcludedDate: excluded,
   };
+}
+
+/** 早特1の料金（2026年4月以降は別料金） */
+function getHayatoku1(
+  entry: ReturnType<typeof getFareEntry> & object,
+  dateStr: string,
+): number | null {
+  const date = new Date(dateStr + "T00:00:00");
+  if (date.getMonth() >= 3 && date.getFullYear() >= 2026) {
+    return (entry as Record<string, number | null>)[
+      "smartex_hayatoku1_2026_apr"
+    ] as number | null;
+  }
+  return (entry as Record<string, number | null>)["smartex_hayatoku1"] as
+    | number
+    | null;
 }

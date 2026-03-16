@@ -1,149 +1,139 @@
+import type { CalculatedFares, FareFilter } from "../../data/types";
 import FareSection from "../FareSection";
 import FareRow from "../FareRow";
-import FareTableView from "../ui/FareTableView";
-import { NOZOMI_MIZUHO_SAKURA_TSUBAME, HIKARI_KODAMA } from "../ui/trainLabels";
-import type { CalculatedFares } from "../../data/calculator";
-import type { FareFilter } from "../../data/types";
+import TrainLabel from "../TrainLabel";
 import { isProductVisible } from "../../data/fareFilter";
-import { TRAIN_TAGS } from "../../data/trainTags";
 
-type Props = {
+interface HayatokuSectionProps {
   fares: CalculatedFares;
-  filter?: FareFilter | null;
-};
+  filter: FareFilter;
+}
 
-function HayatokuSection({ fares, filter }: Props) {
-  const nozomiMizuhoSakuraTsubame = NOZOMI_MIZUHO_SAKURA_TSUBAME;
-  const hikariKodama = HIKARI_KODAMA;
+export default function HayatokuSection({
+  fares,
+  filter,
+}: HayatokuSectionProps) {
+  if (fares.isExcludedDate) return null;
 
-  const f = filter ?? null;
-  const showHayatoku1Free = isProductVisible("hayatoku1Free", f);
-  const showH3NozomiGreen = isProductVisible(
-    "hayatoku3NozomiMizuhoSakuraTsubameGreen",
-    f,
-  );
-  const showH3HikariGreen = isProductVisible("hayatoku3HikariGreen", f);
-  const showH3KodamaGreen = isProductVisible("hayatoku3KodamaGreen", f);
-  const showH7NozomiReserved = isProductVisible(
-    "hayatoku7NozomiMizuhoSakuraTsubameReserved",
-    f,
-  );
-  const showH7HikariReserved = isProductVisible(
-    "hayatoku7HikariKodamaReserved",
-    f,
-  );
-  const showH21NozomiReserved = isProductVisible(
-    "hayatoku21NozomiMizuhoSakuraTsubameReserved",
-    f,
-  );
-  const showFamilyH7 = isProductVisible(
-    "familyHayatoku7HikariKodamaReserved",
-    f,
-  );
+  const groups: {
+    title: string;
+    rows: { id: string; label: React.ReactNode; fare: number | null }[];
+  }[] = [
+    {
+      title: "早特1",
+      rows: [
+        {
+          id: "hayatoku1",
+          label: "自由席",
+          fare: fares.hayatoku1,
+        },
+      ],
+    },
+    {
+      title: "早特3",
+      rows: [
+        {
+          id: "hayatoku3_nozomi_green",
+          label: (
+            <TrainLabel
+              trainTypes={["nozomi", "mizuho", "sakura", "tsubame"]}
+              suffix="グリーン車"
+            />
+          ),
+          fare: fares.hayatoku3NozomiGreen,
+        },
+        {
+          id: "hayatoku3_hikari_green",
+          label: <TrainLabel trainTypes={["hikari"]} suffix="グリーン車" />,
+          fare: fares.hayatoku3HikariGreen,
+        },
+        {
+          id: "hayatoku3_kodama_green",
+          label: <TrainLabel trainTypes={["kodama"]} suffix="グリーン車" />,
+          fare: fares.hayatoku3KodamaGreen,
+        },
+      ],
+    },
+    {
+      title: "早特7",
+      rows: [
+        {
+          id: "hayatoku7_nozomi_reserved",
+          label: (
+            <TrainLabel
+              trainTypes={["nozomi", "mizuho", "sakura", "tsubame"]}
+              suffix="普通車指定席"
+            />
+          ),
+          fare: fares.hayatoku7NozomiReserved,
+        },
+        {
+          id: "hayatoku7_hikari_reserved",
+          label: (
+            <TrainLabel
+              trainTypes={["hikari", "kodama"]}
+              suffix="普通車指定席"
+            />
+          ),
+          fare: fares.hayatoku7HikariReserved,
+        },
+      ],
+    },
+    {
+      title: "早特21",
+      rows: [
+        {
+          id: "hayatoku21_nozomi_reserved",
+          label: (
+            <TrainLabel
+              trainTypes={["nozomi", "mizuho", "sakura", "tsubame"]}
+              suffix="普通車指定席"
+            />
+          ),
+          fare: fares.hayatoku21NozomiReserved,
+        },
+      ],
+    },
+    {
+      title: "ファミリー早特7",
+      rows: [
+        {
+          id: "family_hayatoku7_hikari_reserved",
+          label: (
+            <TrainLabel
+              trainTypes={["hikari", "kodama"]}
+              suffix="普通車指定席"
+            />
+          ),
+          fare: fares.familyHayatoku7HikariReserved,
+        },
+      ],
+    },
+  ];
 
-  const showSubHayatoku1 = showHayatoku1Free;
-  const showSubHayatoku3 =
-    showH3NozomiGreen || showH3HikariGreen || showH3KodamaGreen;
-  const showSubHayatoku7 = showH7NozomiReserved || showH7HikariReserved;
-  const showSubHayatoku21 = showH21NozomiReserved;
-  const showSubFamily = showFamilyH7;
+  const visibleGroups = groups
+    .map((g) => ({
+      ...g,
+      rows: g.rows.filter(
+        (r) => r.fare != null && isProductVisible(r.id, filter),
+      ),
+    }))
+    .filter((g) => g.rows.length > 0);
 
-  if (
-    !showSubHayatoku1 &&
-    !showSubHayatoku3 &&
-    !showSubHayatoku7 &&
-    !showSubHayatoku21 &&
-    !showSubFamily
-  ) {
-    return null;
-  }
+  if (visibleGroups.length === 0) return null;
 
   return (
     <FareSection title="EX早特">
-      <div className="fare-subgroups">
-        <FareTableView>{null}</FareTableView>
-
-        {showSubHayatoku1 && (
-          <div className="fare-subgroup">
-            <h4 className="fare-subgroup__title">早特1</h4>
-            <FareTableView showHeader={false}>
-              <FareRow label="自由席" value={fares.hayatoku1Free} />
-            </FareTableView>
+      {visibleGroups.map((group) => (
+        <div key={group.title} className="mb-2">
+          <div className="mb-0.5 border-b border-indigo-100 py-1 text-xs font-bold text-indigo-900">
+            {group.title}
           </div>
-        )}
-
-        {showSubHayatoku3 && (
-          <div className="fare-subgroup">
-            <h4 className="fare-subgroup__title">早特3</h4>
-            <FareTableView showHeader={false}>
-              {showH3NozomiGreen && (
-                <FareRow
-                  label={`${nozomiMizuhoSakuraTsubame}グリーン車`}
-                  value={fares.hayatoku3NozomiMizuhoSakuraTsubameGreen}
-                />
-              )}
-              {showH3HikariGreen && (
-                <FareRow
-                  label={`${TRAIN_TAGS.hikari}グリーン車`}
-                  value={fares.hayatoku3HikariGreen}
-                />
-              )}
-              {showH3KodamaGreen && (
-                <FareRow
-                  label={`${TRAIN_TAGS.kodama}グリーン車`}
-                  value={fares.hayatoku3KodamaGreen}
-                />
-              )}
-            </FareTableView>
-          </div>
-        )}
-
-        {showSubHayatoku7 && (
-          <div className="fare-subgroup">
-            <h4 className="fare-subgroup__title">早特7</h4>
-            <FareTableView showHeader={false}>
-              {showH7NozomiReserved && (
-                <FareRow
-                  label={`${nozomiMizuhoSakuraTsubame}普通車`}
-                  value={fares.hayatoku7NozomiMizuhoSakuraTsubameReserved}
-                />
-              )}
-              {showH7HikariReserved && (
-                <FareRow
-                  label={`${hikariKodama}普通車`}
-                  value={fares.hayatoku7HikariKodamaReserved}
-                />
-              )}
-            </FareTableView>
-          </div>
-        )}
-
-        {showSubHayatoku21 && (
-          <div className="fare-subgroup">
-            <h4 className="fare-subgroup__title">早特21</h4>
-            <FareTableView showHeader={false}>
-              <FareRow
-                label={`${nozomiMizuhoSakuraTsubame}普通車`}
-                value={fares.hayatoku21NozomiMizuhoSakuraTsubameReserved}
-              />
-            </FareTableView>
-          </div>
-        )}
-
-        {showSubFamily && (
-          <div className="fare-subgroup">
-            <h4 className="fare-subgroup__title">ファミリー早特7</h4>
-            <FareTableView showHeader={false}>
-              <FareRow
-                label={`${hikariKodama}普通車`}
-                value={fares.familyHayatoku7HikariKodamaReserved}
-              />
-            </FareTableView>
-          </div>
-        )}
-      </div>
+          {group.rows.map((r) => (
+            <FareRow key={r.id} label={r.label} fare={r.fare} />
+          ))}
+        </div>
+      ))}
     </FareSection>
   );
 }
-
-export default HayatokuSection;
