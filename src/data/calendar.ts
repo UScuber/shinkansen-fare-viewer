@@ -63,12 +63,19 @@ export function isExcludedDate(dateStr: string): boolean {
   return excluded.some((p) => dateStr >= p.start && dateStr <= p.end);
 }
 
+interface PlatKodamaConfig {
+  peak_periods: { start: string; end: string }[];
+  holidays: string[];
+  valid_until: string;
+}
+
+const platKodamaConfig: PlatKodamaConfig =
+  platKodamaConfigJson as PlatKodamaConfig;
+
 /** ぷらっとこだまの料金区分を取得 */
 export function getPlatKodamaGrade(dateStr: string): "a" | "b" | "c" | "d" {
-  const config = platKodamaConfigJson;
-
   // 繁忙期チェック
-  for (const period of config.peak_periods) {
+  for (const period of platKodamaConfig.peak_periods) {
     if (dateStr >= period.start && dateStr <= period.end) {
       return "d";
     }
@@ -81,7 +88,11 @@ export function getPlatKodamaGrade(dateStr: string): "a" | "b" | "c" | "d" {
   if (dayOfWeek === 5) return "b";
 
   // 土日祝
-  if (dayOfWeek === 0 || dayOfWeek === 6 || config.holidays.includes(dateStr)) {
+  if (
+    dayOfWeek === 0 ||
+    dayOfWeek === 6 ||
+    platKodamaConfig.holidays.includes(dateStr)
+  ) {
     return "c";
   }
 
