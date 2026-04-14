@@ -75,7 +75,7 @@ export function calculateAllFares(
       : null;
 
   // 早特（設定除外日なら全てnull扱い）
-  const hayatoku1 = excluded ? null : getHayatoku1(entry, dateStr);
+  const hayatoku1 = excluded ? null : entry.smartex_hayatoku1;
   const hayatoku3NozomiGreen = excluded
     ? null
     : entry.smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green;
@@ -144,20 +144,4 @@ export function calculateAllFares(
     platKodamaAfterValidUntil,
     isExcludedDate: excluded,
   };
-}
-
-/** 早特1の料金（2026年4月以降は別料金） */
-function getHayatoku1(
-  entry: ReturnType<typeof getFareEntry> & object,
-  dateStr: string,
-): number | null {
-  const date = new Date(dateStr + "T00:00:00");
-  if (date.getMonth() >= 3 && date.getFullYear() >= 2026) {
-    return (entry as Record<string, number | null>)[
-      "smartex_hayatoku1_2026_apr"
-    ] as number | null;
-  }
-  return (entry as Record<string, number | null>)["smartex_hayatoku1"] as
-    | number
-    | null;
 }

@@ -77,7 +77,6 @@ export interface FareEntry {
   smartex_reserved: number | null;
   smartex_green: number | null;
   smartex_hayatoku1: number | null;
-  smartex_hayatoku1_2026_apr: number | null;
   smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_green: number | null;
   smartex_hayatoku3_nozomi_mizuho_sakura_tsubame_reserved: number | null;
   smartex_hayatoku3_hikari_green: number | null;
